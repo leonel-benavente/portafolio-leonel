@@ -1,0 +1,2652 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Altiplano 3D</title>
+  <!-- Three.js & OrbitControls via CDN (con Fallback 2D completo si no hay red o WebGL) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    :root {
+      --navy-dark: #002238;
+      --navy: #003354;
+      --navy-light: #0a4973;
+      --blue-corp: #008FD5;
+      --blue-bright: #1B9CDD;
+      --cyan-soft: #e6f6fc;
+      --bg-app: #f0f4f8;
+      --card-bg: #ffffff;
+      --text-main: #102a43;
+      --text-muted: #486581;
+      --border-color: #d9e2ec;
+      --pf-green: #10b981;
+      --pf-green-bg: #d1fae5;
+      --pf-amber: #f59e0b;
+      --pf-amber-bg: #fef3c7;
+      --pf-red: #ef4444;
+      --pf-red-bg: #fee2e2;
+      --pf-gray: #64748b;
+      --pf-gray-bg: #e2e8f0;
+      --shadow-sm: 0 2px 6px rgba(0, 51, 84, 0.07);
+      --shadow-md: 0 6px 18px rgba(0, 51, 84, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--bg-app);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ENCABEZADO EJECUTIVO */
+    header.app-header {
+      background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 65%, var(--blue-corp) 100%);
+      color: #ffffff;
+      padding: 12px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      box-shadow: var(--shadow-md);
+      z-index: 20;
+    }
+
+    .brand-block {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-badge {
+      background: var(--blue-bright);
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      padding: 6px 10px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      border: 1px solid rgba(255,255,255,0.25);
+    }
+
+    .brand-title h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .brand-title p {
+      font-size: 0.82rem;
+      color: #bae6fd;
+      margin-top: 2px;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .area-selector {
+      display: flex;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.16);
+    }
+
+    .area-btn {
+      background: transparent;
+      color: #cbd5e1;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .area-btn.active {
+      background: var(--blue-bright);
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    .area-btn.pilot-ready {
+      opacity: 0.8;
+    }
+
+    .area-btn .dot-humeda {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #38bdf8;
+      display: inline-block;
+    }
+
+    .area-btn .dot-seca {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      display: inline-block;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 6px;
+    }
+
+    .tab-btn {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 8px 16px;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+
+    .tab-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .tab-btn.active {
+      background: #ffffff;
+      color: var(--navy);
+      border-color: #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+
+    /* BANNER DE AVISO DE NOTAS DEL JSON */
+    .notice-bar {
+      background: #fffbeb;
+      border-bottom: 1px solid #fde68a;
+      color: #92400e;
+      padding: 8px 24px;
+      font-size: 0.82rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .notice-bar strong {
+      color: #78350f;
+    }
+
+    .notice-pills {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .pill-meta {
+      background: var(--navy);
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: 0.76rem;
+      font-weight: 600;
+    }
+
+    /* FILA DE KPIs GLOBALES DEL CONTRATO */
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+      padding: 12px 24px 0 24px;
+    }
+
+    .kpi-card {
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 12px 16px;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      border-left: 4px solid var(--blue-corp);
+    }
+
+    .kpi-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .kpi-value-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .kpi-value {
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: var(--navy);
+    }
+
+    .kpi-sub {
+      font-size: 0.77rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* ICONO DE INFORMACIÓN "i" CON TOOLTIP */
+    .info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: var(--cyan-soft);
+      color: var(--blue-corp);
+      border: 1px solid var(--blue-bright);
+      font-size: 0.72rem;
+      font-weight: 800;
+      font-style: italic;
+      font-family: Georgia, serif;
+      cursor: help;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .info-icon:hover .tooltip-box,
+    .info-icon:focus .tooltip-box {
+      visibility: visible;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .tooltip-box {
+      visibility: hidden;
+      opacity: 0;
+      position: absolute;
+      top: 24px;
+      right: 0;
+      width: 270px;
+      background: var(--navy-dark);
+      color: #ffffff;
+      text-align: left;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.76rem;
+      font-style: normal;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-weight: 400;
+      line-height: 1.45;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      z-index: 100;
+      transition: all 0.18s ease;
+      transform: translateY(-4px);
+      pointer-events: none;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
+    .tooltip-box strong {
+      color: #38bdf8;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .tooltip-box code {
+      display: block;
+      background: rgba(255,255,255,0.1);
+      padding: 4px 6px;
+      border-radius: 4px;
+      margin-top: 5px;
+      color: #fde68a;
+      font-size: 0.73rem;
+    }
+
+    /* CONTENEDOR DE PESTAÑAS */
+    main.workspace {
+      flex: 1;
+      padding: 12px 24px 16px 24px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tab-pane {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .tab-pane.active {
+      display: flex;
+    }
+
+    /* LAYOUT PRINCIPAL DE LA PESTAÑA 3D */
+    .stage-grid {
+      display: grid;
+      grid-template-columns: 1fr 390px;
+      gap: 14px;
+      min-height: 500px;
+      flex: 1;
+    }
+
+    @media (max-width: 1120px) {
+      .stage-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* PANEL IZQUIERDO: VISOR 3D / FALLBACK 2D */
+    .viewer-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      min-height: 480px;
+    }
+
+    .viewer-toolbar {
+      background: var(--navy);
+      color: #ffffff;
+      padding: 9px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 0.8rem;
+    }
+
+    .disclaimer-tag {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      color: #fef08a;
+    }
+
+    .viewer-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-tool {
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      padding: 5px 11px;
+      border-radius: 6px;
+      font-size: 0.77rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-tool:hover {
+      background: var(--blue-bright);
+    }
+
+    .btn-tool.active {
+      background: var(--blue-bright);
+      border-color: #fff;
+    }
+
+    .canvas-container {
+      flex: 1;
+      position: relative;
+      background: radial-gradient(circle at center, #1e3a5f 0%, #091929 100%);
+      overflow: hidden;
+      min-height: 410px;
+    }
+
+    #webgl-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      outline: none;
+    }
+
+    /* ETIQUETAS FLOTANTES 3D SOBRE EL CANVAS */
+    #labels-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .label-3d {
+      position: absolute;
+      transform: translate(-50%, -100%);
+      background: rgba(0, 34, 56, 0.92);
+      color: #ffffff;
+      padding: 5px 9px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.28);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+      pointer-events: auto;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.1s, border-color 0.2s;
+    }
+
+    .label-3d:hover {
+      border-color: #38bdf8;
+      z-index: 15;
+    }
+
+    .label-3d.selected {
+      border: 2px solid #ffffff;
+      background: var(--navy);
+      z-index: 16;
+    }
+
+    .label-3d .lbl-title {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 700;
+    }
+
+    .label-3d .lbl-sub {
+      font-size: 0.68rem;
+      color: #cbd5e1;
+      margin-top: 1px;
+    }
+
+    .area-marker-3d {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      pointer-events: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+
+    .area-marker-humeda {
+      background: rgba(2, 132, 199, 0.88);
+      color: #ffffff;
+      border: 1px solid #7dd3fc;
+    }
+
+    .area-marker-seca {
+      background: rgba(22, 163, 74, 0.85);
+      color: #ffffff;
+      border: 1px solid #86efac;
+    }
+
+    /* LEYENDA SUPERPUESTA EN EL VISOR */
+    .viewer-legend {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(0, 34, 56, 0.9);
+      color: #fff;
+      padding: 9px 13px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+      font-size: 0.74rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 10;
+      backdrop-filter: blur(4px);
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .swatch {
+      width: 11px;
+      height: 11px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    /* FALLBACK 2D INTERACTIVO */
+    #fallback-2d {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: #0f2942;
+      padding: 20px;
+      color: #fff;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow-y: auto;
+    }
+
+    .fallback-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+      margin: auto 0;
+    }
+
+    .fallback-card {
+      background: rgba(255,255,255,0.08);
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 10px;
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .fallback-card.selected {
+      border-color: #38bdf8;
+      background: rgba(27, 156, 221, 0.22);
+    }
+
+    /* PANEL DERECHO: DETALLE DEL FRENTE SELECCIONADO */
+    .inspector-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .inspector-header {
+      background: linear-gradient(90deg, var(--navy) 0%, var(--navy-light) 100%);
+      color: #ffffff;
+      padding: 13px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .inspector-header h2 {
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    .frente-selector-pills {
+      display: flex;
+      gap: 5px;
+      padding: 10px 14px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border-color);
+      overflow-x: auto;
+    }
+
+    .frente-pill {
+      border: 1px solid var(--border-color);
+      background: #ffffff;
+      color: var(--text-main);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    .frente-pill.active {
+      background: var(--navy);
+      color: #ffffff;
+      border-color: var(--navy);
+    }
+
+    .inspector-body {
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .alert-box {
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.79rem;
+      line-height: 1.4;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .alert-box.danger {
+      background: var(--pf-red-bg);
+      border: 1px solid #fca5a5;
+      color: #991b1b;
+    }
+
+    .alert-box.pending {
+      background: var(--pf-gray-bg);
+      border: 1px solid #cbd5e1;
+      color: #334155;
+    }
+
+    .metrics-grid-2x2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .metric-tile {
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .metric-tile-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.73rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .metric-tile-val {
+      font-size: 1.28rem;
+      font-weight: 800;
+      margin-top: 5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .metric-tile-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .pf-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .pf-green { background: var(--pf-green-bg); color: #065f46; }
+    .pf-amber { background: var(--pf-amber-bg); color: #92400e; }
+    .pf-red { background: var(--pf-red-bg); color: #991b1b; }
+    .pf-gray { background: var(--pf-gray-bg); color: #334155; }
+
+    .mini-trend-card {
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .mini-trend-title {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* BARRA INFERIOR: TENDENCIA SEMANAL DEL CONTRATO */
+    .timeline-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .timeline-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .timeline-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn-play {
+      background: var(--blue-corp);
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 7px;
+      font-weight: 700;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 6px rgba(0, 143, 213, 0.3);
+    }
+
+    .btn-play:hover {
+      background: var(--navy);
+    }
+
+    .week-select {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      font-weight: 700;
+      color: var(--navy);
+      background: #fff;
+      font-size: 0.82rem;
+    }
+
+    .slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 240px;
+      flex: 1;
+    }
+
+    .slider-wrap input[type="range"] {
+      flex: 1;
+      accent-color: var(--blue-corp);
+      cursor: pointer;
+    }
+
+    .group-toggle {
+      display: flex;
+      background: #f1f5f9;
+      border-radius: 7px;
+      padding: 3px;
+      border: 1px solid var(--border-color);
+    }
+
+    .group-btn {
+      border: none;
+      background: transparent;
+      padding: 5px 11px;
+      border-radius: 5px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .group-btn.active {
+      background: var(--navy);
+      color: #ffffff;
+    }
+
+    .chart-bars-container {
+      height: 130px;
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      padding: 18px 6px 24px 6px;
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      position: relative;
+      overflow-x: auto;
+    }
+
+    .target-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      border-top: 1.5px dashed var(--navy);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .target-line span {
+      position: absolute;
+      right: 8px;
+      top: -16px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--navy);
+      background: rgba(248,250,252,0.9);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .bar-col {
+      flex: 1;
+      min-width: 18px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .bar-col:hover .bar-fill {
+      filter: brightness(1.15);
+    }
+
+    .bar-col.selected-bar .bar-fill {
+      outline: 2px solid var(--navy-dark);
+      outline-offset: 1px;
+    }
+
+    .bar-fill {
+      width: 78%;
+      border-radius: 4px 4px 0 0;
+      transition: height 0.2s, background-color 0.2s;
+      min-height: 4px;
+    }
+
+    .bar-lbl {
+      position: absolute;
+      bottom: -20px;
+      font-size: 0.66rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .bar-col.selected-bar .bar-lbl {
+      color: var(--navy);
+      font-weight: 800;
+    }
+
+    /* TABLA DE FRENTES Y COMMODITIES */
+    .table-section-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+      padding: 18px;
+      overflow-x: auto;
+    }
+
+    .table-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    table.data-table th {
+      background: var(--navy);
+      color: #ffffff;
+      text-align: left;
+      padding: 10px 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    table.data-table th.num,
+    table.data-table td.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    table.data-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    table.data-table tbody tr:hover {
+      background: var(--cyan-soft);
+    }
+
+    table.data-table tfoot td {
+      background: #f1f5f9;
+      font-weight: 800;
+      color: var(--navy);
+      border-top: 2px solid var(--navy);
+    }
+
+    /* GLOSARIO EJECUTIVO */
+    .glossary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .glossary-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-top: 4px solid var(--blue-corp);
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .glossary-card h3 {
+      color: var(--navy);
+      font-size: 0.98rem;
+      margin-bottom: 6px;
+    }
+
+    .glossary-card p {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .formula-box {
+      background: #f8fafc;
+      border-left: 3px solid var(--blue-bright);
+      padding: 8px 10px;
+      margin-top: 8px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: var(--navy);
+    }
+
+    /* PIE DE PÁGINA */
+    footer.app-footer {
+      background: var(--navy-dark);
+      color: #94a3b8;
+      padding: 10px 24px;
+      font-size: 0.78rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: auto;
+    }
+
+    footer.app-footer strong {
+      color: #ffffff;
+      letter-spacing: 0.03em;
+    }
+  </style>
+</head>
+<body>
+<div role="note" style="background:#FFF4D6;color:#5A4300;font:600 13px/1.4 system-ui,sans-serif;padding:8px 16px;text-align:center;border-bottom:1px solid #E8D59A">Demo anonimizada para portafolio · Desarrollado por Leonel Benavente con IA<a href="../" style="color:inherit;font-weight:700;text-decoration:underline;margin-left:8px">Volver al portafolio</a></div>
+
+  <!-- ENCABEZADO -->
+  <header class="app-header">
+    <div class="brand-block">
+      <span class="brand-badge">Piloto 3D · Demo anonimizada</span>
+      <div class="brand-title">
+        <h1>Proyecto Altiplano — Planta Minera Hidrometalúrgica de Cobre</h1>
+        <p>Cliente: <strong>el Cliente</strong> | Ejecuta: <strong>la Contratista</strong> | Corte Oficial Frentes: <strong>Semana S056 (07-Oct-2026)</strong></p>
+      </div>
+    </div>
+
+    <div class="header-controls">
+      <!-- Estructura escalable Área Húmeda + Área Seca -->
+      <div class="area-selector" title="Arquitectura preparada para incorporar el Área Seca en la siguiente fase del piloto">
+        <button class="area-btn active" id="btn-area-humeda" onclick="setContractArea('HUMEDA')">
+          <span class="dot-humeda"></span> Contrato: Área Húmeda (Activo)
+        </button>
+        <button class="area-btn pilot-ready" id="btn-area-seca" onclick="setContractArea('SECA')">
+          <span class="dot-seca"></span> Área Seca (Estructura Lista)
+        </button>
+      </div>
+
+      <!-- Pestañas de navegación -->
+      <nav class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-3d', this)">Maqueta 3D</button>
+        <button class="tab-btn" onclick="switchTab('tab-table', this)">Tabla de Frentes</button>
+        <button class="tab-btn" onclick="switchTab('tab-glossary', this)">Glosario</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- AVISO DE NOTAS TÉCNICAS DEL CORTE -->
+  <div class="notice-bar">
+    <div>
+      <strong>Aviso de Control de Gestión:</strong>
+      <span id="json-note-1"></span> — <span id="json-note-2"></span>
+    </div>
+    <div class="notice-pills">
+      <span class="pill-meta" id="convencion-pill">Convención PF: Gastadas / Ganadas (Meta ≤ 1.00)</span>
+    </div>
+  </div>
+
+  <!-- TIRA DE KPIs EJECUTIVOS DEL CONTRATO -->
+  <section class="kpi-strip">
+    <!-- KPI 1: PF de la Semana Seleccionada -->
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span id="kpi-sem-title">PF Contrato (Semana S056)</span>
+        <span class="info-icon" tabindex="0">i
+          <span class="tooltip-box">
+            <strong>Factor de Productividad (PF) Semanal</strong>
+            Relación entre las horas-hombre realmente empleadas y las horas-hombre producidas en la semana seleccionada. Un valor de 1.00 o menor indica que se produjo según o mejor que el presupuesto.
+            <code>PF Semanal = HH Gastadas Semana / HH Ganadas Semana</code>
+          </span>
+        </span>
+      </div>
+      <div class="kpi-value-row">
+        <span class="kpi-value" id="kpi-pf-sem">1.12</span>
+        <span class="pf-badge pf-red" id="kpi-pf-sem-badge">Sobre meta</span>
+      </div>
+      <div class="kpi-sub" id="kpi-hh-sem-sub">Gastadas: 19,804.5 HH | Ganadas: 17,674.1 HH</div>
+    </div>
+
+    <!-- KPI 2: PF Acumulado -->
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span>PF Acumulado Contrato</span>
+        <span class="info-icon" tabindex="0">i
+          <span class="tooltip-box">
+            <strong>Factor de Productividad (PF) Acumulado</strong>
+            Desempeño global acumulado desde el inicio del contrato hasta la fecha de corte. En S056 se muestra tanto el cierre oficial de la tabla de control como la serie acumulada.
+            <code>PF Acumulado = HH Gastadas Acum. / HH Ganadas Acum.</code>
+          </span>
+        </span>
+      </div>
+      <div class="kpi-value-row">
+        <span class="kpi-value" id="kpi-pf-acum">0.99</span>
+        <span class="pf-badge pf-green" id="kpi-pf-acum-badge">En Meta (≤ 1.00)</span>
+      </div>
+      <div class="kpi-sub" id="kpi-hh-acum-sub">Total Oficial: 523,136 Gast. / 527,855.2 Gan.</div>
+    </div>
+
+    <!-- KPI 3: PF Últimas 4 Semanas -->
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span id="kpi-pf4-title">PF Últimas 4 Semanas (S053–S056)</span>
+        <span class="info-icon" tabindex="0">i
+          <span class="tooltip-box">
+            <strong>Factor de Productividad Móvil (4 Semanas)</strong>
+            Mide la velocidad reciente del contrato sumando las últimas 4 semanas hasta la semana activa en el selector, suavizando picos puntuales de una sola semana.
+            <code>PF 4 Sem = Σ(HH Gastadas 4 sem) / Σ(HH Ganadas 4 sem)</code>
+          </span>
+        </span>
+      </div>
+      <div class="kpi-value-row">
+        <span class="kpi-value" id="kpi-pf-4w">0.97</span>
+        <span class="pf-badge pf-green" id="kpi-pf-4w-badge">En Meta</span>
+      </div>
+      <div class="kpi-sub" id="kpi-pf-4w-sub">78,687.0 HH Gast. / 80,759.8 HH Gan.</div>
+    </div>
+
+    <!-- KPI 4: Balance de Horas-Hombre (HH Perdidas / Ahorradas) -->
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span>Balance de Horas-Hombre (Corte)</span>
+        <span class="info-icon" tabindex="0">i
+          <span class="tooltip-box">
+            <strong>Horas-Hombre Perdidas o Ahorradas</strong>
+            Diferencia entre las horas gastadas y las horas ganadas. Si el resultado es positivo (+), son horas-hombre perdidas respecto al estándar; si es negativo (−), representa ahorro neto de horas.
+            <code>HH Perdidas = HH Gastadas − HH Ganadas</code>
+          </span>
+        </span>
+      </div>
+      <div class="kpi-value-row">
+        <span class="kpi-value" id="kpi-hh-diff">-4,719 HH</span>
+        <span class="pf-badge pf-green" id="kpi-hh-diff-badge">Ahorro Neto</span>
+      </div>
+      <div class="kpi-sub" id="kpi-hh-diff-sub">Semana S056: +2,130.4 HH perdidas en la semana</div>
+    </div>
+  </section>
+
+  <!-- ÁREA DE TRABAJO PRINCIPAL -->
+  <main class="workspace">
+
+    <!-- PESTAÑA 1: MAQUETA 3D INTERACTIVA -->
+    <section id="tab-3d" class="tab-pane active">
+      <div class="stage-grid">
+
+        <!-- VISOR 3D + CONTROLES -->
+        <div class="viewer-card">
+          <div class="viewer-toolbar">
+            <div class="disclaimer-tag">
+              <span>⚠️ Maqueta esquemática, no es representación a escala de la ingeniería</span>
+            </div>
+            <div class="viewer-actions">
+              <span style="font-size:0.75rem; color:#bae6fd;">Color bloques:</span>
+              <button class="btn-tool active" id="btn-mode-sem" onclick="setBlockColorMode('SEMANA')">PF Semana (<span id="lbl-mode-week">S056</span>)</button>
+              <button class="btn-tool" id="btn-mode-acum" onclick="setBlockColorMode('ACUMULADO')">PF Acumulado (S056)</button>
+              <button class="btn-tool" onclick="resetCameraView()">Vista general</button>
+              <button class="btn-tool" id="btn-toggle-2d" onclick="toggleFallback2D()">Modo 2D / 3D</button>
+              <label class="btn-tool" style="cursor:pointer;" title="Cargar archivo plano_anonimo.png desde su equipo si desea reemplazar la textura">
+                Cargar Plano PNG
+                <input type="file" id="input-plano-file" accept="image/*" style="display:none;" onchange="loadCustomPlanTexture(event)" />
+              </label>
+            </div>
+          </div>
+
+          <div class="canvas-container" id="canvas-wrap">
+            <canvas id="webgl-canvas"></canvas>
+            <div id="labels-layer"></div>
+
+            <!-- FALLBACK 2D (Para equipos sin WebGL o conmutado por el usuario) -->
+            <div id="fallback-2d">
+              <div>
+                <h3 style="margin-bottom:4px;">Vista Esquemática 2D de Frentes (Modo Ligero / Sin WebGL)</h3>
+                <p style="font-size:0.8rem; color:#bae6fd;">Maqueta esquemática, no es representación a escala de la ingeniería. Altura de barra proporcional al presupuesto de Horas-Hombre.</p>
+              </div>
+              <div class="fallback-grid" id="fallback-cards-container"></div>
+              <div style="font-size:0.76rem; color:#94a3b8;">
+                Plano de referencia: Área Húmeda (Celeste) activa | Área Seca (Verde) reservada para ampliación del piloto.
+              </div>
+            </div>
+
+            <!-- LEYENDA DEL SEMÁFORO PF Y PLANO -->
+            <div class="viewer-legend">
+              <div style="font-weight:700; color:#bae6fd;">Semáforo Factor de Productividad (PF = HH Gastadas / HH Ganadas)</div>
+              <div class="legend-row">
+                <span class="legend-item"><i class="swatch" style="background:var(--pf-green)"></i> Óptimo (≤ 1.00)</span>
+                <span class="legend-item"><i class="swatch" style="background:var(--pf-amber)"></i> Alerta (1.01 – 1.10)</span>
+                <span class="legend-item"><i class="swatch" style="background:var(--pf-red)"></i> Crítico (> 1.10)</span>
+                <span class="legend-item"><i class="swatch" style="background:var(--pf-gray)"></i> Pendiente actualización</span>
+              </div>
+              <div class="legend-row" style="border-top:1px solid rgba(255,255,255,0.15); padding-top:4px; color:#cbd5e1;">
+                <span class="legend-item"><i class="swatch" style="background:#38bdf8"></i> Terreno Celeste: Área Húmeda</span>
+                <span class="legend-item"><i class="swatch" style="background:#4ade80"></i> Terreno Verde: Área Seca (Contexto)</span>
+                <span>| Altura de volumen = Presupuesto HH</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL INSPECTOR DE FRENTE -->
+        <aside class="inspector-card">
+          <div class="inspector-header">
+            <div>
+              <div style="font-size:0.72rem; color:#bae6fd; text-transform:uppercase; font-weight:700;">Inspección por Volumen</div>
+              <h2 id="insp-title">Frente 1</h2>
+            </div>
+            <span class="pf-badge pf-green" id="insp-main-badge">PF Sem: 0.88</span>
+          </div>
+
+          <!-- Selector rápido de frentes -->
+          <div class="frente-selector-pills" id="frente-pills-bar"></div>
+
+          <div class="inspector-body">
+            <!-- Aviso si la semana seleccionada no es S056 -->
+            <div class="alert-box pending" id="insp-pending-alert" style="display:none;">
+              <span>ℹ️</span>
+              <div>
+                <strong>Corte por frente pendiente de actualización para <span class="dyn-week-lbl"></span>:</strong>
+                La historia semanal detallada está disponible a nivel de todo el contrato. Para los frentes individuales solo se dispone del corte <strong>S056</strong> y su acumulado.
+              </div>
+            </div>
+
+            <!-- Alerta de partidas con HH gastadas y 0 ganadas -->
+            <div class="alert-box danger" id="insp-zero-progress-alert">
+              <span>🚨</span>
+              <div>
+                <strong>Alerta de Partidas sin Avance Físico:</strong>
+                Este frente registra <strong id="insp-partidas-sin-avance">23</strong> partidas de control con horas-hombre gastadas pero <strong>0 horas-hombre ganadas</strong> (de un total de <span id="insp-partidas-total">174</span> partidas).
+              </div>
+            </div>
+
+            <!-- Tarjetas de Indicadores del Frente -->
+            <div class="metrics-grid-2x2">
+              <div class="metric-tile">
+                <div class="metric-tile-head">
+                  <span>PF de la Semana</span>
+                  <span class="info-icon" tabindex="0">i
+                    <span class="tooltip-box">
+                      <strong>PF Semanal del Frente (Corte S056)</strong>
+                      Horas-hombre gastadas divididas entre las horas-hombre ganadas del frente durante la semana de corte S056.
+                      <code>PF Sem = HH Gastadas Sem / HH Ganadas Sem</code>
+                    </span>
+                  </span>
+                </div>
+                <div class="metric-tile-val" id="insp-pf-sem">0.88</div>
+                <div class="metric-tile-sub" id="insp-hh-sem">Gast: 8,941 | Gan: 10,202.1 HH</div>
+              </div>
+
+              <div class="metric-tile">
+                <div class="metric-tile-head">
+                  <span>PF Acumulado</span>
+                  <span class="info-icon" tabindex="0">i
+                    <span class="tooltip-box">
+                      <strong>PF Acumulado del Frente (Corte S056)</strong>
+                      Desempeño acumulado histórico del frente al cierre de la semana S056.
+                      <code>PF Acum = HH Gastadas Acum / HH Ganadas Acum</code>
+                    </span>
+                  </span>
+                </div>
+                <div class="metric-tile-val" id="insp-pf-acum">0.93</div>
+                <div class="metric-tile-sub" id="insp-hh-acum">Gast: 251,245.5 | Gan: 270,526.7 HH</div>
+              </div>
+
+              <div class="metric-tile">
+                <div class="metric-tile-head">
+                  <span>PF Últimas 4 Sem.</span>
+                  <span class="info-icon" tabindex="0">i
+                    <span class="tooltip-box">
+                      <strong>PF Móvil Últimas 4 Semanas</strong>
+                      Referencia del ritmo de las últimas 4 semanas del contrato (el desglose histórico por frente solo tiene corte en S056).
+                      <code>PF 4S = Σ HH Gast. (4 sem) / Σ HH Gan. (4 sem)</code>
+                    </span>
+                  </span>
+                </div>
+                <div class="metric-tile-val" id="insp-pf-4w">0.97</div>
+                <div class="metric-tile-sub">Referencia ritmo contrato (4 sem.)</div>
+              </div>
+
+              <div class="metric-tile">
+                <div class="metric-tile-head">
+                  <span>HH Perdidas / Ahorro</span>
+                  <span class="info-icon" tabindex="0">i
+                    <span class="tooltip-box">
+                      <strong>Brecha de Horas-Hombre (HH Perdidas)</strong>
+                      Horas-hombre gastadas menos horas-hombre ganadas. Valores positivos (+) indican sobregasto de horas; negativos (−) indican ahorro frente al estándar.
+                      <code>HH Perdidas = HH Gastadas − HH Ganadas</code>
+                    </span>
+                  </span>
+                </div>
+                <div class="metric-tile-val" id="insp-hh-lost">-19,281.2</div>
+                <div class="metric-tile-sub" id="insp-hh-lost-sem">En S056: -1,261.1 HH (Ahorro)</div>
+              </div>
+            </div>
+
+            <!-- Presupuesto vs Proyección (Forecast) y Avance Físico -->
+            <div class="mini-trend-card">
+              <div class="mini-trend-title">
+                <span>Magnitud de Presupuesto y Avance Físico (S056)</span>
+                <span id="insp-avance-pct" style="color:var(--blue-corp);">32.1% Avance</span>
+              </div>
+              <div style="background:#e2e8f0; height:10px; border-radius:99px; overflow:hidden; margin-bottom:8px;">
+                <div id="insp-progress-bar" style="height:100%; width:32%; background:linear-gradient(90deg, var(--blue-corp), var(--blue-bright));"></div>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+                <span>Presupuesto: <strong id="insp-presupuesto" style="color:var(--navy)">844,050 HH</strong></span>
+                <span>Proyección (Forecast): <strong id="insp-forecast" style="color:var(--navy)">869,494 HH</strong></span>
+              </div>
+            </div>
+
+            <!-- Mini Tendencia Comparativa -->
+            <div class="mini-trend-card">
+              <div class="mini-trend-title">
+                <span>Mini Tendencia: Comparativa PF y Horas del Frente</span>
+              </div>
+              <svg id="insp-mini-svg" width="100%" height="92" viewBox="0 0 320 92"></svg>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <!-- BARRA INFERIOR: TENDENCIA SEMANAL DEL CONTRATO -->
+      <div class="timeline-card">
+        <div class="timeline-top">
+          <div>
+            <h3 style="font-size:0.95rem; color:var(--navy); display:flex; align-items:center; gap:8px;">
+              Evolución Histórica del Contrato Área Húmeda (S021 a S056)
+              <span class="info-icon" tabindex="0">i
+                <span class="tooltip-box">
+                  <strong>Curva Semanal del Contrato</strong>
+                  Reproduce la evolución semanal de todo el contrato entre febrero y octubre de 2026. Al seleccionar cualquier semana distinta de S056, la maqueta 3D marca los frentes como "Pendiente actualización" porque el corte por frente corresponde exclusivamente a S056.
+                </span>
+              </span>
+            </h3>
+            <p style="font-size:0.77rem; color:var(--text-muted);" id="timeline-subtitle">
+              Semana activa: <strong>S056</strong> (Fecha de corte: 2026-10-07) — Haz clic en una barra o usa el reproductor para recorrer la historia.
+            </p>
+          </div>
+
+          <div class="timeline-controls">
+            <button class="btn-play" id="btn-play-timeline" onclick="togglePlayTimeline()">
+              <span id="play-icon">▶</span> <span id="play-text">Reproducir Historia</span>
+            </button>
+
+            <div class="slider-wrap">
+              <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted);">S021</span>
+              <input type="range" id="week-slider" min="0" max="35" value="35" oninput="onWeekSliderChange(this.value)" />
+              <span style="font-size:0.75rem; font-weight:700; color:var(--navy);">S056</span>
+            </div>
+
+            <select id="week-dropdown" class="week-select" onchange="onWeekSliderChange(this.value)"></select>
+
+            <div class="group-toggle" title="Agrupar visualización de barras por periodo">
+              <button class="group-btn active" id="grp-sem" onclick="setTrendGrouping('SEMANA')">Semana</button>
+              <button class="group-btn" id="grp-mes" onclick="setTrendGrouping('MES')">Mes</button>
+              <button class="group-btn" id="grp-anio" onclick="setTrendGrouping('ANIO')">Año</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gráfico interactivo de barras de PF -->
+        <div class="chart-bars-container" id="trend-bars-box"></div>
+      </div>
+    </section>
+
+    <!-- PESTAÑA 2: TABLA DE FRENTES Y ESPECIALIDADES (COMMODITIES) -->
+    <section id="tab-table" class="tab-pane">
+      <div class="table-section-card">
+        <div class="table-section-header">
+          <div>
+            <h2 style="font-size:1.1rem; color:var(--navy);">Resumen Ejecutivo por Frente de Trabajo (Corte Oficial S056)</h2>
+            <p style="font-size:0.8rem; color:var(--text-muted);">Verificación de cuadratura exacta con el Informe Semanal de Productividad: 523,136 HH gastadas y 527,855.22 HH ganadas acumuladas.</p>
+          </div>
+          <span class="pf-badge pf-green">Cuadratura Frentes = Totales Oficiales ✓</span>
+        </div>
+
+        <table class="data-table" id="table-frentes">
+          <thead>
+            <tr>
+              <th>Frente</th>
+              <th class="num">Partidas Totales</th>
+              <th class="num">HH Presupuesto</th>
+              <th class="num">HH Proyección (Forecast)</th>
+              <th class="num">HH Gastadas Sem (S056)</th>
+              <th class="num">HH Ganadas Sem (S056)</th>
+              <th class="num">PF Semana</th>
+              <th class="num">HH Gastadas Acum.</th>
+              <th class="num">HH Ganadas Acum.</th>
+              <th class="num">PF Acumulado</th>
+              <th class="num">HH Perdidas Acum.</th>
+              <th class="num">Alerta (0 Ganadas)</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-frentes"></tbody>
+          <tfoot id="tfoot-frentes"></tfoot>
+        </table>
+      </div>
+
+      <div class="table-section-card">
+        <div class="table-section-header">
+          <div>
+            <h2 style="font-size:1.1rem; color:var(--navy);">Desglose por Especialidad Constructiva (Commodities — Corte S056)</h2>
+            <p style="font-size:0.8rem; color:var(--text-muted);">Identificación de disciplinas críticas y partidas con consumo de horas sin avance físico reportado.</p>
+          </div>
+        </div>
+
+        <table class="data-table" id="table-commodities">
+          <thead>
+            <tr>
+              <th>Especialidad (Commodity)</th>
+              <th class="num">Partidas</th>
+              <th class="num">HH Presupuesto</th>
+              <th class="num">HH Proyección</th>
+              <th class="num">HH Gastadas Sem</th>
+              <th class="num">HH Ganadas Sem</th>
+              <th class="num">PF Semana</th>
+              <th class="num">HH Gastadas Acum.</th>
+              <th class="num">HH Ganadas Acum.</th>
+              <th class="num">PF Acumulado</th>
+              <th class="num">HH Perdidas Acum.</th>
+              <th class="num">Partidas sin Avance</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-commodities"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PESTAÑA 3: GLOSARIO EJECUTIVO (SIN SIGLAS SIN EXPLICAR) -->
+    <section id="tab-glossary" class="tab-pane">
+      <div class="table-section-card" style="margin-bottom:4px;">
+        <h2 style="font-size:1.15rem; color:var(--navy); margin-bottom:6px;">Glosario de Términos para Gerencia (Lenguaje Claro)</h2>
+        <p style="font-size:0.84rem; color:var(--text-muted);">Definiciones operativas y fórmulas utilizadas en el tablero del Proyecto Altiplano para lectura directa en directorio.</p>
+      </div>
+
+      <div class="glossary-grid">
+        <div class="glossary-card">
+          <h3>Horas-Hombre (HH)</h3>
+          <p>Unidad de medida del esfuerzo laboral equivalente a una hora de trabajo de una persona. Permite sumar y comparar distintas especialidades (concreto, tuberías, electricidad) bajo una misma moneda de control.</p>
+        </div>
+
+        <div class="glossary-card">
+          <h3>Horas-Hombre Presupuesto (HH Presupuesto)</h3>
+          <p>Cantidad total de horas-hombre estimadas originalmente en la oferta base para completar el alcance total de un frente o especialidad. En la maqueta 3D, determina la altura física de cada bloque.</p>
+        </div>
+
+        <div class="glossary-card">
+          <h3>Horas-Hombre Proyección (HH Forecast)</h3>
+          <p>Estimación actualizada del total de horas-hombre con las que se proyecta terminar el frente al cierre de la obra, considerando los rendimientos reales observados y ajustes de alcance.</p>
+        </div>
+
+        <div class="glossary-card">
+          <h3>Horas-Hombre Ganadas (Valor Ganado en Horas)</h3>
+          <p>Horas presupuestadas equivalentes al avance físico realmente ejecutado y verificado en terreno. Si una partida tiene 1,000 HH de presupuesto y lleva 50% de avance físico real, tiene 500 HH Ganadas.</p>
+          <div class="formula-box">HH Ganadas = HH Presupuesto × % Avance Físico Real</div>
+        </div>
+
+        <div class="glossary-card">
+          <h3>Horas-Hombre Gastadas (Horas Reales)</h3>
+          <p>Cantidad real de horas-hombre pagadas y registradas por el personal directo en terreno (según partes diarios y tareo) para ejecutar las actividades durante la semana o de forma acumulada.</p>
+        </div>
+
+        <div class="glossary-card">
+          <h3>Factor de Productividad (PF)</h3>
+          <p>Indicador principal de eficiencia de mano de obra bajo la convención <strong>Gastadas sobre Ganadas</strong>. Indica cuántas horas reales se necesitaron para producir 1.00 hora de avance físico presupuestado.</p>
+          <div class="formula-box">PF = HH Gastadas / HH Ganadas | Meta ≤ 1.00</div>
+        </div>
+
+        <div class="glossary-card">
+          <h3>Horas-Hombre Perdidas (Brecha de Productividad)</h3>
+          <p>Diferencia directa entre las horas realmente consumidas y las horas ganadas por avance físico. Un valor positivo refleja sobregasto (pérdida de productividad); un valor negativo refleja ahorro de horas frente a la meta.</p>
+          <div class="formula-box">HH Perdidas = HH Gastadas − HH Ganadas</div>
+        </div>
+
+        <div class="glossary-card">
+          <h3>Partidas sin Avance (HH Gastadas con 0 Ganadas)</h3>
+          <p>Actividades de control donde ya se han invertido horas-hombre de personal en terreno pero aún no se acredita avance físico cobrable o medible (por trabajos preliminares, retrabajos o falta de cierre de protocolo).</p>
+        </div>
+
+        <div class="glossary-card">
+          <h3>Informe Semanal de Productividad (ISP) y Notas de Curva</h3>
+          <p>Reporte oficial de control del proyecto al corte de cada semana. En este corte (S056), la suma de la tabla oficial por frente registra 523,136 HH gastadas y 527,855.22 HH ganadas, mientras que la curva histórica semanal acumulada presenta una diferencia de -1,295 HH gastadas y -674 HH ganadas en revisión con el equipo de terreno.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- PIE DE PÁGINA INSTITUCIONAL -->
+  <footer class="app-footer">
+    <div>
+      <strong>Planificación y Productividad</strong> — Tablero Ejecutivo de Control de Horas-Hombre y Rendimiento
+    </div>
+    <div>
+      Proyecto Altiplano (Contrato Área Húmeda) | Corte S056 | Maqueta esquemática sin escala de ingeniería
+    </div>
+  </footer>
+
+  <!-- SCRIPT PRINCIPAL CON DATOS EMBEBIDOS, LÓGICA DE NEGOCIO Y MOTOR 3D -->
+  <script>
+    /*************************************************************************
+     * 1. PARÁMETRO EDITABLE DE CONVENCIÓN DE FACTOR DE PRODUCTIVIDAD (PF)
+     *************************************************************************/
+    const CONVENCION_PF = "gastadas/ganadas"; // PF = HH gastadas / HH ganadas; meta <= 1.00
+
+    /*************************************************************************
+     * 2. DATOS EMBEBIDOS ÍNTEGROS (data.json exacto sin alterar cifras)
+     *************************************************************************/
+    const DATA = {
+      "proyecto": "Proyecto Altiplano",
+      "contrato": "Área Húmeda",
+      "corte": {
+        "semana": "S056",
+        "fecha": "2026-10-07"
+      },
+      "totales_isp": {
+        "hh_gastadas_acum": 523136,
+        "hh_ganadas_acum": 527855.22,
+        "hh_gastadas_sem": 19804.5,
+        "hh_ganadas_sem": 17674.09
+      },
+      "notas": [
+        "Historia semanal solo a nivel contrato; por frente y commodity solo corte S056 y acumulado.",
+        "La curva semanal acumulada difiere de la tabla del ISP en -1295 HH gastadas y -674 ganadas (revisar con el proyecto)."
+      ],
+      "contrato_semanal": [
+        { "semana": "S021", "fecha_corte": "2026-02-06", "hh_gastadas": 826.0, "hh_ganadas": 937.14, "hh_gastadas_acum": 826.0, "hh_ganadas_acum": 937.14 },
+        { "semana": "S022", "fecha_corte": "2026-02-13", "hh_gastadas": 1394.0, "hh_ganadas": 1374.06, "hh_gastadas_acum": 2220.0, "hh_ganadas_acum": 2311.2 },
+        { "semana": "S023", "fecha_corte": "2026-02-20", "hh_gastadas": 1695.5, "hh_ganadas": 2722.04, "hh_gastadas_acum": 3915.5, "hh_ganadas_acum": 5033.24 },
+        { "semana": "S024", "fecha_corte": "2026-02-27", "hh_gastadas": 2452.0, "hh_ganadas": 2174.46, "hh_gastadas_acum": 6367.5, "hh_ganadas_acum": 7207.7 },
+        { "semana": "S025", "fecha_corte": "2026-03-06", "hh_gastadas": 3060.0, "hh_ganadas": 4901.8, "hh_gastadas_acum": 9427.5, "hh_ganadas_acum": 12109.5 },
+        { "semana": "S026", "fecha_corte": "2026-03-13", "hh_gastadas": 2531.0, "hh_ganadas": 1557.69, "hh_gastadas_acum": 11958.5, "hh_ganadas_acum": 13667.2 },
+        { "semana": "S027", "fecha_corte": "2026-03-18", "hh_gastadas": 3545.0, "hh_ganadas": 5221.87, "hh_gastadas_acum": 15503.5, "hh_ganadas_acum": 18889.07 },
+        { "semana": "S028", "fecha_corte": "2026-03-25", "hh_gastadas": 2918.0, "hh_ganadas": 4000.36, "hh_gastadas_acum": 18421.5, "hh_ganadas_acum": 22889.43 },
+        { "semana": "S029", "fecha_corte": "2026-04-01", "hh_gastadas": 5196.0, "hh_ganadas": 3734.57, "hh_gastadas_acum": 23617.5, "hh_ganadas_acum": 26624.0 },
+        { "semana": "S030", "fecha_corte": "2026-04-08", "hh_gastadas": 8937.0, "hh_ganadas": 9077.44, "hh_gastadas_acum": 32554.5, "hh_ganadas_acum": 35701.44 },
+        { "semana": "S031", "fecha_corte": "2026-04-15", "hh_gastadas": 9896.0, "hh_ganadas": 12405.65, "hh_gastadas_acum": 42450.5, "hh_ganadas_acum": 48107.09 },
+        { "semana": "S032", "fecha_corte": "2026-04-22", "hh_gastadas": 10300.0, "hh_ganadas": 11729.64, "hh_gastadas_acum": 52750.5, "hh_ganadas_acum": 59836.73 },
+        { "semana": "S033", "fecha_corte": "2026-04-29", "hh_gastadas": 12439.0, "hh_ganadas": 9547.57, "hh_gastadas_acum": 65189.5, "hh_ganadas_acum": 69384.3 },
+        { "semana": "S034", "fecha_corte": "2026-05-06", "hh_gastadas": 14859.5, "hh_ganadas": 15785.79, "hh_gastadas_acum": 80049.0, "hh_ganadas_acum": 85170.09 },
+        { "semana": "S035", "fecha_corte": "2026-05-13", "hh_gastadas": 14986.5, "hh_ganadas": 14105.83, "hh_gastadas_acum": 95035.5, "hh_ganadas_acum": 99275.92 },
+        { "semana": "S036", "fecha_corte": "2026-05-20", "hh_gastadas": 15722.0, "hh_ganadas": 15674.92, "hh_gastadas_acum": 110757.5, "hh_ganadas_acum": 114950.84 },
+        { "semana": "S037", "fecha_corte": "2026-05-27", "hh_gastadas": 17950.0, "hh_ganadas": 17605.64, "hh_gastadas_acum": 128707.5, "hh_ganadas_acum": 132556.48 },
+        { "semana": "S038", "fecha_corte": "2026-06-03", "hh_gastadas": 20576.0, "hh_ganadas": 20425.73, "hh_gastadas_acum": 149283.5, "hh_ganadas_acum": 152982.2 },
+        { "semana": "S039", "fecha_corte": "2026-06-10", "hh_gastadas": 19593.0, "hh_ganadas": 23631.94, "hh_gastadas_acum": 168876.5, "hh_ganadas_acum": 176614.15 },
+        { "semana": "S040", "fecha_corte": "2026-06-17", "hh_gastadas": 17615.0, "hh_ganadas": 17028.51, "hh_gastadas_acum": 186491.5, "hh_ganadas_acum": 193642.66 },
+        { "semana": "S041", "fecha_corte": "2026-06-24", "hh_gastadas": 21380.5, "hh_ganadas": 20550.84, "hh_gastadas_acum": 207872.0, "hh_ganadas_acum": 214193.5 },
+        { "semana": "S042", "fecha_corte": "2026-07-01", "hh_gastadas": 22311.0, "hh_ganadas": 19567.65, "hh_gastadas_acum": 230183.0, "hh_ganadas_acum": 233761.15 },
+        { "semana": "S043", "fecha_corte": "2026-07-08", "hh_gastadas": 21584.0, "hh_ganadas": 20216.41, "hh_gastadas_acum": 251767.0, "hh_ganadas_acum": 253977.56 },
+        { "semana": "S044", "fecha_corte": "2026-07-15", "hh_gastadas": 20872.0, "hh_ganadas": 16998.06, "hh_gastadas_acum": 272639.0, "hh_ganadas_acum": 270975.62 },
+        { "semana": "S045", "fecha_corte": "2026-07-22", "hh_gastadas": 21994.0, "hh_ganadas": 18211.35, "hh_gastadas_acum": 294633.0, "hh_ganadas_acum": 289186.97 },
+        { "semana": "S046", "fecha_corte": "2026-07-29", "hh_gastadas": 21471.5, "hh_ganadas": 20272.92, "hh_gastadas_acum": 316104.5, "hh_ganadas_acum": 309459.88 },
+        { "semana": "S047", "fecha_corte": "2026-08-05", "hh_gastadas": 21111.5, "hh_ganadas": 24753.08, "hh_gastadas_acum": 337216.0, "hh_ganadas_acum": 334212.96 },
+        { "semana": "S048", "fecha_corte": "2026-08-12", "hh_gastadas": 20114.0, "hh_ganadas": 21500.92, "hh_gastadas_acum": 357330.0, "hh_ganadas_acum": 355713.88 },
+        { "semana": "S049", "fecha_corte": "2026-08-19", "hh_gastadas": 21699.0, "hh_ganadas": 24059.31, "hh_gastadas_acum": 379029.0, "hh_ganadas_acum": 379773.18 },
+        { "semana": "S050", "fecha_corte": "2026-08-26", "hh_gastadas": 21808.0, "hh_ganadas": 21195.1, "hh_gastadas_acum": 400837.0, "hh_ganadas_acum": 400968.28 },
+        { "semana": "S051", "fecha_corte": "2026-09-02", "hh_gastadas": 21137.5, "hh_ganadas": 22369.84, "hh_gastadas_acum": 421974.5, "hh_ganadas_acum": 423338.12 },
+        { "semana": "S052", "fecha_corte": "2026-09-09", "hh_gastadas": 21179.5, "hh_ganadas": 23083.53, "hh_gastadas_acum": 443154.0, "hh_ganadas_acum": 446421.65 },
+        { "semana": "S053", "fecha_corte": "2026-09-16", "hh_gastadas": 18639.0, "hh_ganadas": 20483.15, "hh_gastadas_acum": 461793.0, "hh_ganadas_acum": 466904.8 },
+        { "semana": "S054", "fecha_corte": "2026-09-23", "hh_gastadas": 20615.5, "hh_ganadas": 22865.19, "hh_gastadas_acum": 482408.5, "hh_ganadas_acum": 489770.0 },
+        { "semana": "S055", "fecha_corte": "2026-09-30", "hh_gastadas": 19628.0, "hh_ganadas": 19737.39, "hh_gastadas_acum": 502036.5, "hh_ganadas_acum": 509507.39 },
+        { "semana": "S056", "fecha_corte": "2026-10-07", "hh_gastadas": 19804.5, "hh_ganadas": 17674.09, "hh_gastadas_acum": 521841.0, "hh_ganadas_acum": 527181.48 }
+      ],
+      "frentes": [
+        { "codigo": "Frente 1", "nombre": "Frente 1", "partidas": 174, "hh_presupuesto": 844050, "hh_forecast": 869494, "hh_gastadas_sem": 8941.0, "hh_ganadas_sem": 10202.1, "hh_gastadas_acum": 251245.5, "hh_ganadas_acum": 270526.7, "partidas_sin_avance": 23 },
+        { "codigo": "Frente 2", "nombre": "Frente 2", "partidas": 163, "hh_presupuesto": 266263, "hh_forecast": 282258, "hh_gastadas_sem": 2356.5, "hh_ganadas_sem": 1025.3, "hh_gastadas_acum": 54419.5, "hh_ganadas_acum": 48982.4, "partidas_sin_avance": 18 },
+        { "codigo": "Frente 3", "nombre": "Frente 3", "partidas": 167, "hh_presupuesto": 704857, "hh_forecast": 719547, "hh_gastadas_sem": 6751.0, "hh_ganadas_sem": 5757.0, "hh_gastadas_acum": 185516.0, "hh_ganadas_acum": 188752.9, "partidas_sin_avance": 23 },
+        { "codigo": "Frente 4", "nombre": "Frente 4", "partidas": 158, "hh_presupuesto": 109444, "hh_forecast": 128643, "hh_gastadas_sem": 1738.0, "hh_ganadas_sem": 689.6, "hh_gastadas_acum": 29658.5, "hh_ganadas_acum": 18245.4, "partidas_sin_avance": 14 },
+        { "codigo": "General", "nombre": "General", "partidas": 4, "hh_presupuesto": 25797, "hh_forecast": 16435, "hh_gastadas_sem": 18.0, "hh_ganadas_sem": 0.0, "hh_gastadas_acum": 2296.5, "hh_ganadas_acum": 1347.8, "partidas_sin_avance": 1 }
+      ],
+      "commodities": [
+        { "nombre": "Obras De Concreto", "partidas": 143, "hh_presupuesto": 654909, "hh_forecast": 559650, "hh_gastadas_sem": 13043.5, "hh_ganadas_sem": 11141.6, "hh_gastadas_acum": 328558.5, "hh_ganadas_acum": 355966.7, "partidas_sin_avance": 31 },
+        { "nombre": "Tubería", "partidas": 126, "hh_presupuesto": 329404, "hh_forecast": 324276, "hh_gastadas_sem": 0.0, "hh_ganadas_sem": 0.0, "hh_gastadas_acum": 104.5, "hh_ganadas_acum": 124.6, "partidas_sin_avance": 1 },
+        { "nombre": "Cable De Electricidad", "partidas": 60, "hh_presupuesto": 174667, "hh_forecast": 169357, "hh_gastadas_sem": 103.5, "hh_ganadas_sem": 274.0, "hh_gastadas_acum": 5945.0, "hh_ganadas_acum": 4449.8, "partidas_sin_avance": 5 },
+        { "nombre": "Estructuras", "partidas": 52, "hh_presupuesto": 157901, "hh_forecast": 157681, "hh_gastadas_sem": 156.0, "hh_ganadas_sem": 299.3, "hh_gastadas_acum": 470.0, "hh_ganadas_acum": 483.4, "partidas_sin_avance": 1 },
+        { "nombre": "Acabados", "partidas": 37, "hh_presupuesto": 105187, "hh_forecast": 127540, "hh_gastadas_sem": 0.0, "hh_ganadas_sem": 0.0, "hh_gastadas_acum": 281.0, "hh_ganadas_acum": 0.0, "partidas_sin_avance": 2 },
+        { "nombre": "Equipos Mecánicos", "partidas": 62, "hh_presupuesto": 94955, "hh_forecast": 105909, "hh_gastadas_sem": 105.0, "hh_ganadas_sem": 0.0, "hh_gastadas_acum": 163.0, "hh_ganadas_acum": 0.0, "partidas_sin_avance": 2 },
+        { "nombre": "Equipos Eléctricos", "partidas": 32, "hh_presupuesto": 91624, "hh_forecast": 82916, "hh_gastadas_sem": 0.0, "hh_ganadas_sem": 0.0, "hh_gastadas_acum": 0.0, "hh_ganadas_acum": 0.0, "partidas_sin_avance": 0 },
+        { "nombre": "Ánodo Y Catodo", "partidas": 1, "hh_presupuesto": 88926, "hh_forecast": 86258, "hh_gastadas_sem": 0.0, "hh_ganadas_sem": 0.0, "hh_gastadas_acum": 0.0, "hh_ganadas_acum": 0.0, "partidas_sin_avance": 0 },
+        { "nombre": "Relleno", "partidas": 39, "hh_presupuesto": 42166, "hh_forecast": 96979, "hh_gastadas_sem": 2794.0, "hh_ganadas_sem": 1326.6, "hh_gastadas_acum": 64717.0, "hh_ganadas_acum": 40801.4, "partidas_sin_avance": 16 },
+        { "nombre": "Cable De Instrumentación", "partidas": 22, "hh_presupuesto": 34925, "hh_forecast": 33878, "hh_gastadas_sem": 470.0, "hh_ganadas_sem": 2228.7, "hh_gastadas_acum": 1599.5, "hh_ganadas_acum": 6511.6, "partidas_sin_avance": 0 },
+        { "nombre": "Salas Y Subestaciones Eléctricas", "partidas": 4, "hh_presupuesto": 32681, "hh_forecast": 31700, "hh_gastadas_sem": 0.0, "hh_ganadas_sem": 0.0, "hh_gastadas_acum": 0.0, "hh_ganadas_acum": 0.0, "partidas_sin_avance": 0 },
+        { "nombre": "Instrumentos", "partidas": 20, "hh_presupuesto": 25955, "hh_forecast": 25177, "hh_gastadas_sem": 0.0, "hh_ganadas_sem": 0.0, "hh_gastadas_acum": 0.0, "hh_ganadas_acum": 0.0, "partidas_sin_avance": 0 },
+        { "nombre": "Facilidades", "partidas": 4, "hh_presupuesto": 25797, "hh_forecast": 16435, "hh_gastadas_sem": 18.0, "hh_ganadas_sem": 0.0, "hh_gastadas_acum": 2296.5, "hh_ganadas_acum": 1347.8, "partidas_sin_avance": 1 },
+        { "nombre": "Pernos E Insertos", "partidas": 12, "hh_presupuesto": 24630, "hh_forecast": 24630, "hh_gastadas_sem": 11.0, "hh_ganadas_sem": 0.0, "hh_gastadas_acum": 5304.0, "hh_ganadas_acum": 7004.9, "partidas_sin_avance": 1 },
+        { "nombre": "Geosintéticos", "partidas": 17, "hh_presupuesto": 24220, "hh_forecast": 27266, "hh_gastadas_sem": 103.0, "hh_ganadas_sem": 0.0, "hh_gastadas_acum": 7089.0, "hh_ganadas_acum": 3275.7, "partidas_sin_avance": 2 },
+        { "nombre": "Excavación", "partidas": 28, "hh_presupuesto": 17791, "hh_forecast": 122268, "hh_gastadas_sem": 2839.5, "hh_ganadas_sem": 2333.1, "hh_gastadas_acum": 104679.0, "hh_ganadas_acum": 107719.9, "partidas_sin_avance": 13 },
+        { "nombre": "Grout", "partidas": 1, "hh_presupuesto": 17385, "hh_forecast": 17385, "hh_gastadas_sem": 161.0, "hh_ganadas_sem": 70.7, "hh_gastadas_acum": 382.0, "hh_ganadas_acum": 169.6, "partidas_sin_avance": 0 },
+        { "nombre": "Equipos Sci", "partidas": 2, "hh_presupuesto": 7288, "hh_forecast": 7072, "hh_gastadas_sem": 0.0, "hh_ganadas_sem": 0.0, "hh_gastadas_acum": 0.0, "hh_ganadas_acum": 0.0, "partidas_sin_avance": 0 },
+        { "nombre": "Por Presentar", "partidas": 2, "hh_presupuesto": 0, "hh_forecast": 0, "hh_gastadas_sem": 0.0, "hh_ganadas_sem": 0.0, "hh_gastadas_acum": 246.0, "hh_ganadas_acum": 0.0, "partidas_sin_avance": 2 },
+        { "nombre": "Observado", "partidas": 2, "hh_presupuesto": 0, "hh_forecast": 0, "hh_gastadas_sem": 0.0, "hh_ganadas_sem": 0.0, "hh_gastadas_acum": 1301.0, "hh_ganadas_acum": 0.0, "partidas_sin_avance": 2 }
+      ]
+    };
+
+    /*************************************************************************
+     * 3. FUNCIONES DE CÁLCULO DE PF Y FORMATO NUMÉRICO
+     *************************************************************************/
+    function calcPF(gastadas, ganadas) {
+      if (gastadas === 0 && ganadas === 0) return null; // Sin actividad
+      if (ganadas <= 0 && gastadas > 0) return Infinity; // Horas gastadas con 0 ganadas -> Crítico
+      return CONVENCION_PF === "gastadas/ganadas" ? (gastadas / ganadas) : (ganadas / gastadas);
+    }
+
+    function getPFStatus(pfValue, isPending = false) {
+      if (isPending || pfValue === null || pfValue === undefined) {
+        return { key: "gray", label: "Pendiente actualización", hex: 0x64748b, css: "#64748b", badgeClass: "pf-gray" };
+      }
+      if (pfValue === Infinity) {
+        return { key: "red", label: "Crítico (0 Ganadas)", hex: 0xef4444, css: "#ef4444", badgeClass: "pf-red" };
+      }
+      if (pfValue <= 1.00) {
+        return { key: "green", label: "En Meta (≤ 1.00)", hex: 0x10b981, css: "#10b981", badgeClass: "pf-green" };
+      }
+      if (pfValue <= 1.10) {
+        return { key: "amber", label: "Alerta (1.01–1.10)", hex: 0xf59e0b, css: "#f59e0b", badgeClass: "pf-amber" };
+      }
+      return { key: "red", label: "Sobre Meta (> 1.10)", hex: 0xef4444, css: "#ef4444", badgeClass: "pf-red" };
+    }
+
+    function fmtNum(val, decimals = 1) {
+      if (val === null || val === undefined || Number.isNaN(val)) return "—";
+      return Number(val).toLocaleString("es-PE", {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+
+    function fmtPF(pf) {
+      if (pf === null || pf === undefined) return "S/M";
+      if (pf === Infinity) return "∞ (0 Gan.)";
+      return pf.toFixed(2);
+    }
+
+    /*************************************************************************
+     * 4. CHEQUEO DE ACEPTACIÓN EN CONSOLA (SUMA DE FRENTES == TOTALES_ISP)
+     *************************************************************************/
+    function runConsoleAcceptanceCheck() {
+      const sumGastadasAcum = DATA.frentes.reduce((acc, f) => acc + f.hh_gastadas_acum, 0);
+      const sumGanadasAcum = Number(DATA.frentes.reduce((acc, f) => acc + f.hh_ganadas_acum, 0).toFixed(2));
+      const sumGastadasSem = DATA.frentes.reduce((acc, f) => acc + f.hh_gastadas_sem, 0);
+      const sumGanadasSem = Number(DATA.frentes.reduce((acc, f) => acc + f.hh_ganadas_sem, 0).toFixed(2));
+
+      console.group("✅ VERIFICACIÓN DE ACEPTACIÓN — PROYECTO ALTIPLANO (S056)");
+      console.log("Convención activa PF:", CONVENCION_PF);
+      console.log(`Suma Frentes HH Gastadas Acum.: ${sumGastadasAcum} | Totales ISP: ${DATA.totales_isp.hh_gastadas_acum}`);
+      console.log(`Suma Frentes HH Ganadas Acum.:  ${sumGanadasAcum} | Totales ISP: ${DATA.totales_isp.hh_ganadas_acum}`);
+      console.assert(Math.abs(sumGastadasAcum - DATA.totales_isp.hh_gastadas_acum) < 0.01, "Error en cuadratura de HH Gastadas Acumuladas");
+      console.assert(Math.abs(sumGanadasAcum - DATA.totales_isp.hh_ganadas_acum) < 0.1, "Error en cuadratura de HH Ganadas Acumuladas");
+      console.log("Diferencia documentada curva vs tabla ISP:", {
+        diff_gastadas: DATA.contrato_semanal[DATA.contrato_semanal.length - 1].hh_gastadas_acum - DATA.totales_isp.hh_gastadas_acum,
+        diff_ganadas: Number((DATA.contrato_semanal[DATA.contrato_semanal.length - 1].hh_ganadas_acum - DATA.totales_isp.hh_ganadas_acum).toFixed(2))
+      });
+      console.groupEnd();
+    }
+
+    /*************************************************************************
+     * 5. ESTADO DE LA APLICACIÓN INTERACTIVA
+     *************************************************************************/
+    const STATE = {
+      activeWeekIdx: DATA.contrato_semanal.length - 1, // Inicia en S056 (índice 35)
+      selectedFrenteIdx: 0, // Inicia en Frente 1
+      blockColorMode: "SEMANA", // 'SEMANA' | 'ACUMULADO'
+      trendGrouping: "SEMANA", // 'SEMANA' | 'MES' | 'ANIO'
+      contractArea: "HUMEDA", // 'HUMEDA' | 'SECA' (piloto listo)
+      isPlaying: false,
+      playTimer: null,
+      isFallback2D: false
+    };
+
+    /*************************************************************************
+     * 6. ESCENA 3D (THREE.JS) — MAQUETA ESQUEMÁTICA Y TERRENO CON PLANO
+     *************************************************************************/
+    let scene, camera, renderer, controls, raycaster, mouse;
+    let terrainMesh;
+    const frenteMeshes = [];
+    const labelElements = [];
+    const areaMarkers = [];
+
+    // Posiciones esquemáticas de los 5 volúmenes sobre el Área Húmeda (celeste)
+    // Se disponen limpiamente sobre el sector celeste sin afirmar ubicación real de ingeniería
+    const FRENTE_LAYOUT = [
+      { codigo: "Frente 1", x: -4.2, z: 3.6, w: 4.2, d: 3.8 },
+      { codigo: "Frente 2", x: 1.8,  z: 3.6, w: 3.8, d: 3.5 },
+      { codigo: "Frente 3", x: -4.2, z: 8.8, w: 4.2, d: 3.8 },
+      { codigo: "Frente 4", x: 1.8,  z: 8.8, w: 3.8, d: 3.5 },
+      { codigo: "General",  x: 7.2,  z: 6.2, w: 2.6, d: 2.6 }
+    ];
+
+    function createProceduralPlanCanvas() {
+      const c = document.createElement("canvas");
+      c.width = 1600;
+      c.height = 1130;
+      const ctx = c.getContext("2d");
+
+      // Fondo técnico de plano de ingeniería
+      ctx.fillStyle = "#f8fafc";
+      ctx.fillRect(0, 0, c.width, c.height);
+
+      // Cuadrícula de coordenadas
+      ctx.strokeStyle = "#cbd5e1";
+      ctx.lineWidth = 1;
+      for (let x = 60; x < c.width - 40; x += 80) {
+        ctx.beginPath(); ctx.moveTo(x, 40); ctx.lineTo(x, c.height - 60); ctx.stroke();
+      }
+      for (let y = 40; y < c.height - 60; y += 80) {
+        ctx.beginPath(); ctx.moveTo(60, y); ctx.lineTo(c.width - 40, y); ctx.stroke();
+      }
+
+      // Curvas de nivel topográficas suaves
+      ctx.strokeStyle = "#94a3b8";
+      ctx.lineWidth = 1.2;
+      for (let r = 120; r < 600; r += 65) {
+        ctx.beginPath();
+        ctx.ellipse(1280, 680, r, r * 0.65, -0.2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // ZONA VERDE: ÁREA SECA (Superior e Izquierda, igual a plano_anonimo.png)
+      ctx.fillStyle = "rgba(134, 239, 172, 0.55)";
+      ctx.strokeStyle = "#15803d";
+      ctx.lineWidth = 3;
+      ctx.fillRect(75, 55, 1180, 310);
+      ctx.strokeRect(75, 55, 1180, 310);
+
+      ctx.fillRect(75, 365, 480, 210);
+      ctx.strokeRect(75, 365, 480, 210);
+
+      // Detalles internos esquemáticos de pozas/pila en Área Seca
+      ctx.strokeStyle = "#166534";
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 4; i++) {
+        ctx.strokeRect(110 + i * 270, 85, 240, 240);
+      }
+      ctx.strokeRect(105, 395, 190, 150);
+      ctx.strokeRect(320, 395, 200, 150);
+
+      // ZONA CELESTE: ÁREA HÚMEDA (Centro-Derecha e Inferior, igual a plano_anonimo.png)
+      ctx.fillStyle = "rgba(56, 189, 248, 0.58)";
+      ctx.strokeStyle = "#0369a1";
+      ctx.lineWidth = 3.5;
+      ctx.fillRect(760, 440, 360, 480);
+      ctx.strokeRect(760, 440, 360, 480);
+
+      // Racks de tuberías y celdas en Área Húmeda
+      ctx.strokeStyle = "#0284c7";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(790, 480, 130, 390);
+      ctx.strokeRect(950, 480, 140, 390);
+
+      // Corredor de tuberías principal (Tie-ins)
+      ctx.strokeStyle = "#1d4ed8";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(100, 540);
+      ctx.lineTo(1180, 480);
+      ctx.lineTo(1360, 690);
+      ctx.stroke();
+
+      // Poza lateral derecha (Celeste)
+      ctx.fillStyle = "rgba(56, 189, 248, 0.52)";
+      ctx.beginPath();
+      ctx.moveTo(1190, 760);
+      ctx.lineTo(1440, 690);
+      ctx.lineTo(1480, 760);
+      ctx.lineTo(1230, 840);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Leyenda impresa en el plano
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "bold 22px sans-serif";
+      ctx.fillText("PROYECTO ALTIPLANO — ÁREA HÚMEDA / ÁREA SECA (PLANO CONTEXTUAL)", 90, 1055);
+      ctx.font = "17px sans-serif";
+      ctx.fillStyle = "#334155";
+      ctx.fillText("Maqueta esquemática: los volúmenes representan presupuesto y productividad por frente, no su ubicación física.", 90, 1085);
+
+      // Marco exterior del plano
+      ctx.strokeStyle = "#003354";
+      ctx.lineWidth = 6;
+      ctx.strokeRect(40, 30, c.width - 80, c.height - 60);
+
+      return c;
+    }
+
+    function initThreeJS() {
+      const container = document.getElementById("canvas-wrap");
+      const canvas = document.getElementById("webgl-canvas");
+
+      if (typeof THREE === "undefined") {
+        activateFallback2D();
+        return;
+      }
+
+      try {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0b1d30);
+
+        const w = container.clientWidth || 800;
+        const h = container.clientHeight || 460;
+
+        camera = new THREE.PerspectiveCamera(42, w / h, 0.1, 500);
+        camera.position.set(0, 25, 31);
+
+        renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(w, h);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        renderer.shadowMap.enabled = true;
+
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.07;
+        controls.maxPolarAngle = Math.PI / 2 - 0.04;
+        controls.minDistance = 10;
+        controls.maxDistance = 68;
+        controls.target.set(0, 1.5, 2.5);
+
+        // Iluminación ejecutiva limpia
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.78);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.65);
+        dirLight.position.set(18, 34, 22);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // Terreno con textura de plano (intenta cargar plano_anonimo.png o plano_anonimo.jpg, y usa canvas de respaldo inmediato)
+        const fallbackCanvas = createProceduralPlanCanvas();
+        const fallbackTex = new THREE.CanvasTexture(fallbackCanvas);
+        fallbackTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+        const planeGeo = new THREE.PlaneGeometry(36, 25.4);
+        const planeMat = new THREE.MeshLambertMaterial({ map: fallbackTex });
+        terrainMesh = new THREE.Mesh(planeGeo, planeMat);
+        terrainMesh.rotation.x = -Math.PI / 2;
+        terrainMesh.receiveShadow = true;
+        scene.add(terrainMesh);
+
+        // Intentar cargar automáticamente plano_anonimo.png o .jpg del mismo directorio
+        const loader = new THREE.TextureLoader();
+        loader.load(
+          "plano_anonimo.png",
+          (tex) => {
+            tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            terrainMesh.material.map = tex;
+            terrainMesh.material.needsUpdate = true;
+          },
+          undefined,
+          () => {
+            loader.load("plano_anonimo.jpg", (tex2) => {
+              tex2.anisotropy = renderer.capabilities.getMaxAnisotropy();
+              terrainMesh.material.map = tex2;
+              terrainMesh.material.needsUpdate = true;
+            }, undefined, () => {});
+          }
+        );
+
+        // Borde de plataforma del terreno
+        const baseFrameGeo = new THREE.BoxGeometry(36.4, 0.4, 25.8);
+        const baseFrameMat = new THREE.MeshLambertMaterial({ color: 0x003354 });
+        const baseFrame = new THREE.Mesh(baseFrameGeo, baseFrameMat);
+        baseFrame.position.y = -0.22;
+        scene.add(baseFrame);
+
+        // Construcción de los 5 volúmenes de frentes con altura proporcional a hh_presupuesto
+        const maxPresupuesto = Math.max(...DATA.frentes.map(f => f.hh_presupuesto));
+        const maxHeight = 9.5;
+        const minHeight = 1.1;
+
+        const labelsLayer = document.getElementById("labels-layer");
+        labelsLayer.innerHTML = "";
+
+        DATA.frentes.forEach((frente, idx) => {
+          const layout = FRENTE_LAYOUT[idx];
+          const height = Math.max(minHeight, (frente.hh_presupuesto / maxPresupuesto) * maxHeight);
+
+          const geo = new THREE.BoxGeometry(layout.w, height, layout.d);
+          const mat = new THREE.MeshStandardMaterial({
+            color: 0x10b981,
+            roughness: 0.32,
+            metalness: 0.12,
+            transparent: true,
+            opacity: 0.93
+          });
+
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.position.set(layout.x, height / 2, layout.z);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          mesh.userData = { frenteIndex: idx, height: height };
+
+          // Contorno técnico del volumen
+          const edges = new THREE.EdgesGeometry(geo);
+          const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+          const wireframe = new THREE.LineSegments(edges, lineMat);
+          mesh.add(wireframe);
+
+          scene.add(mesh);
+          frenteMeshes.push(mesh);
+
+          // Etiqueta HTML flotante sobre cada frente
+          const lbl = document.createElement("div");
+          lbl.className = "label-3d" + (idx === STATE.selectedFrenteIdx ? " selected" : "");
+          lbl.onclick = () => selectFrente(idx);
+          labelsLayer.appendChild(lbl);
+          labelElements.push(lbl);
+        });
+
+        // Marcadores flotantes de nombre de área ("Área Húmeda" y "Área Seca")
+        const markerHumeda = document.createElement("div");
+        markerHumeda.className = "area-marker-3d area-marker-humeda";
+        markerHumeda.textContent = "Área Húmeda (Contrato Activo)";
+        labelsLayer.appendChild(markerHumeda);
+        areaMarkers.push({ el: markerHumeda, pos: new THREE.Vector3(-0.5, 0.2, 11.4) });
+
+        const markerSeca = document.createElement("div");
+        markerSeca.className = "area-marker-3d area-marker-seca";
+        markerSeca.textContent = "Área Seca (Piloto Escalable)";
+        labelsLayer.appendChild(markerSeca);
+        areaMarkers.push({ el: markerSeca, pos: new THREE.Vector3(-6.0, 0.2, -7.2) });
+
+        // Interacción de clic (Raycaster)
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+
+        let pointerDownPos = { x: 0, y: 0 };
+        canvas.addEventListener("pointerdown", (e) => {
+          pointerDownPos = { x: e.clientX, y: e.clientY };
+        });
+
+        canvas.addEventListener("pointerup", (e) => {
+          const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+          if (dist > 6) return; // Fue arrastre de cámara orbital
+
+          const rect = canvas.getBoundingClientRect();
+          mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+          mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+          raycaster.setFromCamera(mouse, camera);
+          const hits = raycaster.intersectObjects(frenteMeshes, false);
+          if (hits.length > 0) {
+            const idx = hits[0].object.userData.frenteIndex;
+            selectFrente(idx);
+          }
+        });
+
+        window.addEventListener("resize", onWindowResize);
+        animateThreeJS();
+      } catch (err) {
+        console.warn("WebGL no disponible, activando Fallback 2D:", err);
+        activateFallback2D();
+      }
+    }
+
+    function onWindowResize() {
+      if (!renderer || !camera) return;
+      const container = document.getElementById("canvas-wrap");
+      const w = container.clientWidth || 800;
+      const h = container.clientHeight || 460;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+
+    function update3DLabelsProjection() {
+      if (!renderer || !camera || STATE.isFallback2D) return;
+      const canvas = renderer.domElement;
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+
+      frenteMeshes.forEach((mesh, idx) => {
+        const topVec = new THREE.Vector3(
+          mesh.position.x,
+          mesh.userData.height + 0.55,
+          mesh.position.z
+        );
+        topVec.project(camera);
+        const x = (topVec.x * 0.5 + 0.5) * w;
+        const y = (-(topVec.y * 0.5) + 0.5) * h;
+
+        const lbl = labelElements[idx];
+        if (topVec.z > 1) {
+          lbl.style.display = "none";
+        } else {
+          lbl.style.display = "block";
+          lbl.style.left = `${x}px`;
+          lbl.style.top = `${y}px`;
+        }
+      });
+
+      areaMarkers.forEach((m) => {
+        const v = m.pos.clone().project(camera);
+        const x = (v.x * 0.5 + 0.5) * w;
+        const y = (-(v.y * 0.5) + 0.5) * h;
+        m.el.style.left = `${x}px`;
+        m.el.style.top = `${y}px`;
+      });
+    }
+
+    function animateThreeJS() {
+      requestAnimationFrame(animateThreeJS);
+      if (STATE.isFallback2D || !renderer) return;
+      controls.update();
+      renderer.render(scene, camera);
+      update3DLabelsProjection();
+    }
+
+    function resetCameraView() {
+      if (!camera || !controls) return;
+      camera.position.set(0, 25, 31);
+      controls.target.set(0, 1.5, 2.5);
+      controls.update();
+    }
+
+    function loadCustomPlanTexture(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file || !terrainMesh) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const tex = new THREE.Texture(img);
+          tex.needsUpdate = true;
+          terrainMesh.material.map = tex;
+          terrainMesh.material.needsUpdate = true;
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function activateFallback2D() {
+      STATE.isFallback2D = true;
+      document.getElementById("fallback-2d").style.display = "flex";
+      document.getElementById("labels-layer").style.display = "none";
+      renderFallback2DCards();
+    }
+
+    function toggleFallback2D() {
+      STATE.isFallback2D = !STATE.isFallback2D;
+      document.getElementById("fallback-2d").style.display = STATE.isFallback2D ? "flex" : "none";
+      document.getElementById("labels-layer").style.display = STATE.isFallback2D ? "none" : "block";
+      if (STATE.isFallback2D) {
+        renderFallback2DCards();
+      } else {
+        onWindowResize();
+      }
+    }
+
+    /*************************************************************************
+     * 7. ACTUALIZACIÓN INTEGRAL DE LA INTERFAZ AL CAMBIAR SEMANA O FRENTE
+     *************************************************************************/
+    function getFourWeekContractMetrics(endIdx) {
+      const startIdx = Math.max(0, endIdx - 3);
+      const slice = DATA.contrato_semanal.slice(startIdx, endIdx + 1);
+      const sumGast = slice.reduce((acc, s) => acc + s.hh_gastadas, 0);
+      const sumGan = slice.reduce((acc, s) => acc + s.hh_ganadas, 0);
+      const pf = calcPF(sumGast, sumGan);
+      return {
+        startWeek: slice[0].semana,
+        endWeek: slice[slice.length - 1].semana,
+        sumGast,
+        sumGan,
+        pf
+      };
+    }
+
+    function updateAllViews() {
+      const weekObj = DATA.contrato_semanal[STATE.activeWeekIdx];
+      const isCorteS056 = weekObj.semana === DATA.corte.semana;
+
+      // Sincronizar controles de semana
+      document.getElementById("week-slider").value = STATE.activeWeekIdx;
+      document.getElementById("week-dropdown").value = STATE.activeWeekIdx;
+      document.getElementById("lbl-mode-week").textContent = weekObj.semana;
+      document.getElementById("timeline-subtitle").innerHTML =
+        `Semana activa: <strong>${weekObj.semana}</strong> (Fecha de corte: ${weekObj.fecha_corte}) — ` +
+        (isCorteS056
+          ? `Corte completo activo para contrato y frentes.`
+          : `Curva contractual en <strong>${weekObj.semana}</strong>; frentes en estado <em>"Pendiente actualización"</em> (solo corte S056).`);
+
+      // 1. Actualizar KPIs superiores del contrato
+      const pfSem = calcPF(weekObj.hh_gastadas, weekObj.hh_ganadas);
+      const stSem = getPFStatus(pfSem);
+      document.getElementById("kpi-sem-title").textContent = `PF Contrato (Semana ${weekObj.semana})`;
+      document.getElementById("kpi-pf-sem").textContent = fmtPF(pfSem);
+      const badgeSem = document.getElementById("kpi-pf-sem-badge");
+      badgeSem.className = `pf-badge ${stSem.badgeClass}`;
+      badgeSem.textContent = stSem.label;
+      document.getElementById("kpi-hh-sem-sub").textContent =
+        `Gastadas: ${fmtNum(weekObj.hh_gastadas, 1)} HH | Ganadas: ${fmtNum(weekObj.hh_ganadas, 1)} HH`;
+
+      // KPI Acumulado a la semana seleccionada (en S056 destaca el total oficial del ISP)
+      const gastAcum = isCorteS056 ? DATA.totales_isp.hh_gastadas_acum : weekObj.hh_gastadas_acum;
+      const ganAcum = isCorteS056 ? DATA.totales_isp.hh_ganadas_acum : weekObj.hh_ganadas_acum;
+      const pfAcum = calcPF(gastAcum, ganAcum);
+      const stAcum = getPFStatus(pfAcum);
+      document.getElementById("kpi-pf-acum").textContent = fmtPF(pfAcum);
+      const badgeAcum = document.getElementById("kpi-pf-acum-badge");
+      badgeAcum.className = `pf-badge ${stAcum.badgeClass}`;
+      badgeAcum.textContent = stAcum.label;
+      document.getElementById("kpi-hh-acum-sub").textContent = isCorteS056
+        ? `Total Oficial ISP: ${fmtNum(gastAcum, 0)} Gast. / ${fmtNum(ganAcum, 1)} Gan.`
+        : `Acumulado curva a ${weekObj.semana}: ${fmtNum(gastAcum, 1)} Gast. / ${fmtNum(ganAcum, 1)} Gan.`;
+
+      // KPI Últimas 4 Semanas del contrato
+      const m4w = getFourWeekContractMetrics(STATE.activeWeekIdx);
+      const st4w = getPFStatus(m4w.pf);
+      document.getElementById("kpi-pf4-title").textContent = `PF Últimas 4 Semanas (${m4w.startWeek}–${m4w.endWeek})`;
+      document.getElementById("kpi-pf-4w").textContent = fmtPF(m4w.pf);
+      const badge4w = document.getElementById("kpi-pf-4w-badge");
+      badge4w.className = `pf-badge ${st4w.badgeClass}`;
+      badge4w.textContent = st4w.label;
+      document.getElementById("kpi-pf-4w-sub").textContent =
+        `${fmtNum(m4w.sumGast, 1)} HH Gast. / ${fmtNum(m4w.sumGan, 1)} HH Gan.`;
+
+      // KPI Balance HH (Gastadas - Ganadas)
+      const diffAcum = gastAcum - ganAcum;
+      const diffSem = weekObj.hh_gastadas - weekObj.hh_ganadas;
+      const diffEl = document.getElementById("kpi-hh-diff");
+      diffEl.textContent = `${diffAcum > 0 ? "+" : ""}${fmtNum(diffAcum, 0)} HH`;
+      const badgeDiff = document.getElementById("kpi-hh-diff-badge");
+      if (diffAcum <= 0) {
+        badgeDiff.className = "pf-badge pf-green";
+        badgeDiff.textContent = "Ahorro Neto Acum.";
+      } else {
+        badgeDiff.className = "pf-badge pf-red";
+        badgeDiff.textContent = "Horas Perdidas Acum.";
+      }
+      document.getElementById("kpi-hh-diff-sub").textContent =
+        `En ${weekObj.semana}: ${diffSem > 0 ? "+" : ""}${fmtNum(diffSem, 1)} HH (${diffSem > 0 ? "perdidas" : "ahorradas"})`;
+
+      // 2. Actualizar colores de los bloques 3D y etiquetas flotantes
+      update3DBlocksAndLabels(isCorteS056);
+
+      // 3. Actualizar panel inspector derecho para el frente seleccionado
+      updateFrenteInspector(isCorteS056, weekObj.semana, m4w);
+
+      // 4. Actualizar barra de tendencia inferior
+      renderTrendBars();
+
+      // 5. Si el modo Fallback 2D está activo, refrescar tarjetas
+      if (STATE.isFallback2D) {
+        renderFallback2DCards();
+      }
+    }
+
+    function update3DBlocksAndLabels(isCorteS056) {
+      DATA.frentes.forEach((frente, idx) => {
+        const pfSem = calcPF(frente.hh_gastadas_sem, frente.hh_ganadas_sem);
+        const pfAcum = calcPF(frente.hh_gastadas_acum, frente.hh_ganadas_acum);
+
+        // Si el usuario elige una semana anterior a S056 y está viendo el modo semanal, muestra gris "pendiente actualización"
+        const isPending = !isCorteS056;
+        const activePF = STATE.blockColorMode === "SEMANA" ? pfSem : pfAcum;
+        const status = getPFStatus(activePF, isPending);
+
+        if (frenteMeshes[idx]) {
+          frenteMeshes[idx].material.color.setHex(status.hex);
+          const isSelected = idx === STATE.selectedFrenteIdx;
+          frenteMeshes[idx].scale.set(isSelected ? 1.05 : 1.0, 1.0, isSelected ? 1.05 : 1.0);
+        }
+
+        if (labelElements[idx]) {
+          const lbl = labelElements[idx];
+          lbl.className = "label-3d" + (idx === STATE.selectedFrenteIdx ? " selected" : "");
+          const alertDot = frente.partidas_sin_avance > 0 ? `<span title="Partidas con HH gastadas y 0 ganadas" style="color:#fca5a5;">⚠️</span>` : "";
+          lbl.innerHTML = `
+            <div class="lbl-title">
+              <span class="swatch" style="background:${status.css}"></span>
+              <span>${frente.nombre}</span>
+              ${alertDot}
+            </div>
+            <div class="lbl-sub">
+              ${isPending
+                ? `Pendiente actualización`
+                : `PF Sem: <strong>${fmtPF(pfSem)}</strong> | Acum: <strong>${fmtPF(pfAcum)}</strong>`}
+            </div>
+          `;
+        }
+      });
+    }
+
+    function updateFrenteInspector(isCorteS056, weekCode, m4w) {
+      const f = DATA.frentes[STATE.selectedFrenteIdx];
+      document.getElementById("insp-title").textContent = f.nombre;
+
+      // Botones rápidos de selección de frente
+      const pillsBar = document.getElementById("frente-pills-bar");
+      pillsBar.innerHTML = "";
+      DATA.frentes.forEach((item, idx) => {
+        const pfS = calcPF(item.hh_gastadas_sem, item.hh_ganadas_sem);
+        const st = getPFStatus(pfS, !isCorteS056);
+        const btn = document.createElement("button");
+        btn.className = "frente-pill" + (idx === STATE.selectedFrenteIdx ? " active" : "");
+        btn.innerHTML = `<span class="swatch" style="background:${st.css}"></span> ${item.nombre}`;
+        btn.onclick = () => selectFrente(idx);
+        pillsBar.appendChild(btn);
+      });
+
+      // Alerta de semana distinta a S056
+      const pendingAlert = document.getElementById("insp-pending-alert");
+      if (!isCorteS056) {
+        pendingAlert.style.display = "flex";
+        pendingAlert.querySelector(".dyn-week-lbl").textContent = weekCode;
+      } else {
+        pendingAlert.style.display = "none";
+      }
+
+      // Alerta de partidas sin avance (HH gastadas y 0 ganadas)
+      const zeroAlert = document.getElementById("insp-zero-progress-alert");
+      if (f.partidas_sin_avance > 0) {
+        zeroAlert.style.display = "flex";
+        document.getElementById("insp-partidas-sin-avance").textContent = f.partidas_sin_avance;
+        document.getElementById("insp-partidas-total").textContent = f.partidas;
+      } else {
+        zeroAlert.style.display = "none";
+      }
+
+      const pfSem = calcPF(f.hh_gastadas_sem, f.hh_ganadas_sem);
+      const pfAcum = calcPF(f.hh_gastadas_acum, f.hh_ganadas_acum);
+      const stSem = getPFStatus(pfSem, !isCorteS056);
+      const stAcum = getPFStatus(pfAcum);
+
+      const mainBadge = document.getElementById("insp-main-badge");
+      mainBadge.className = `pf-badge ${stSem.badgeClass}`;
+      mainBadge.textContent = !isCorteS056 ? `${weekCode}: Pendiente actualización` : `PF S056: ${fmtPF(pfSem)}`;
+
+      // Tarjeta 1: PF Semana
+      document.getElementById("insp-pf-sem").innerHTML = !isCorteS056
+        ? `<span style="font-size:0.9rem; color:var(--pf-gray);">Pendiente actualización</span>`
+        : `${fmtPF(pfSem)} <span class="pf-badge ${stSem.badgeClass}">${stSem.label}</span>`;
+      document.getElementById("insp-hh-sem").textContent = !isCorteS056
+        ? `Corte disponible en S056 (${fmtNum(f.hh_gastadas_sem, 1)} Gast. / ${fmtNum(f.hh_ganadas_sem, 1)} Gan.)`
+        : `Gast: ${fmtNum(f.hh_gastadas_sem, 1)} | Gan: ${fmtNum(f.hh_ganadas_sem, 1)} HH`;
+
+      // Tarjeta 2: PF Acumulado
+      document.getElementById("insp-pf-acum").innerHTML =
+        `${fmtPF(pfAcum)} <span class="pf-badge ${stAcum.badgeClass}">${stAcum.label}</span>`;
+      document.getElementById("insp-hh-acum").textContent =
+        `Gast: ${fmtNum(f.hh_gastadas_acum, 1)} | Gan: ${fmtNum(f.hh_ganadas_acum, 1)} HH`;
+
+      // Tarjeta 3: PF Últimas 4 Semanas
+      const st4w = getPFStatus(m4w.pf);
+      document.getElementById("insp-pf-4w").innerHTML =
+        `${fmtPF(m4w.pf)} <span class="pf-badge ${st4w.badgeClass}">${m4w.startWeek}–${m4w.endWeek}</span>`;
+
+      // Tarjeta 4: HH Perdidas (Gastadas - Ganadas)
+      const lostAcum = f.hh_gastadas_acum - f.hh_ganadas_acum;
+      const lostSem = f.hh_gastadas_sem - f.hh_ganadas_sem;
+      const lostEl = document.getElementById("insp-hh-lost");
+      lostEl.style.color = lostAcum > 0 ? "var(--pf-red)" : "var(--pf-green)";
+      lostEl.textContent = `${lostAcum > 0 ? "+" : ""}${fmtNum(lostAcum, 1)} HH`;
+      document.getElementById("insp-hh-lost-sem").textContent =
+        `En S056: ${lostSem > 0 ? "+" : ""}${fmtNum(lostSem, 1)} HH (${lostSem > 0 ? "sobregasto" : "ahorro"})`;
+
+      // Barra de avance físico sobre presupuesto
+      const pctAvance = f.hh_presupuesto > 0 ? (f.hh_ganadas_acum / f.hh_presupuesto) * 100 : 0;
+      document.getElementById("insp-avance-pct").textContent = `${pctAvance.toFixed(1)}% Avance Físico`;
+      document.getElementById("insp-progress-bar").style.width = `${Math.min(100, pctAvance)}%`;
+      document.getElementById("insp-presupuesto").textContent = `${fmtNum(f.hh_presupuesto, 0)} HH`;
+      document.getElementById("insp-forecast").textContent = `${fmtNum(f.hh_forecast, 0)} HH`;
+
+      // Mini SVG comparativo
+      renderInspectorMiniSVG(f, pfSem, pfAcum, m4w.pf);
+    }
+
+    function renderInspectorMiniSVG(f, pfSem, pfAcum, pf4w) {
+      const svg = document.getElementById("insp-mini-svg");
+      const items = [
+        { label: "PF Acumulado", val: pfAcum === Infinity ? 1.6 : (pfAcum || 0), txt: fmtPF(pfAcum) },
+        { label: "PF 4 Sem (Cont.)", val: pf4w === Infinity ? 1.6 : (pf4w || 0), txt: fmtPF(pf4w) },
+        { label: "PF Semana S056", val: pfSem === Infinity ? 1.6 : (pfSem || 0), txt: fmtPF(pfSem) }
+      ];
+
+      let html = `
+        <line x1="115" y1="8" x2="305" y2="8" stroke="#e2e8f0" stroke-width="1"/>
+        <!-- Línea meta PF = 1.00 -->
+        <line x1="210" y1="6" x2="210" y2="84" stroke="#003354" stroke-width="1.5" stroke-dasharray="3,3"/>
+        <text x="210" y="90" font-size="9" fill="#003354" font-weight="bold" text-anchor="middle">Meta 1.00</text>
+      `;
+
+      items.forEach((it, i) => {
+        const y = 16 + i * 24;
+        const st = getPFStatus(it.label.includes("S056") && pfSem === Infinity ? Infinity : it.val);
+        const clamped = Math.min(1.8, Math.max(0.2, it.val));
+        const widthPx = (clamped / 1.0) * 95;
+        html += `
+          <text x="4" y="${y + 11}" font-size="10.5" fill="#102a43" font-weight="600">${it.label}</text>
+          <rect x="115" y="${y}" width="190" height="14" rx="4" fill="#e2e8f0"/>
+          <rect x="115" y="${y}" width="${Math.min(190, widthPx)}" height="14" rx="4" fill="${st.css}"/>
+          <text x="${Math.min(298, 120 + widthPx)}" y="${y + 11}" font-size="10" fill="#002238" font-weight="800">${it.txt}</text>
+        `;
+      });
+
+      svg.innerHTML = html;
+    }
+
+    function renderFallback2DCards() {
+      const container = document.getElementById("fallback-cards-container");
+      const weekObj = DATA.contrato_semanal[STATE.activeWeekIdx];
+      const isCorteS056 = weekObj.semana === DATA.corte.semana;
+      const maxPres = Math.max(...DATA.frentes.map(f => f.hh_presupuesto));
+
+      container.innerHTML = "";
+      DATA.frentes.forEach((f, idx) => {
+        const pfSem = calcPF(f.hh_gastadas_sem, f.hh_ganadas_sem);
+        const pfAcum = calcPF(f.hh_gastadas_acum, f.hh_ganadas_acum);
+        const st = getPFStatus(STATE.blockColorMode === "SEMANA" ? pfSem : pfAcum, !isCorteS056);
+        const hPct = Math.max(15, Math.round((f.hh_presupuesto / maxPres) * 100));
+
+        const card = document.createElement("div");
+        card.className = "fallback-card" + (idx === STATE.selectedFrenteIdx ? " selected" : "");
+        card.onclick = () => selectFrente(idx);
+        card.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <strong>${f.nombre}</strong>
+            <span class="pf-badge ${st.badgeClass}">${!isCorteS056 ? "Pendiente" : fmtPF(pfSem)}</span>
+          </div>
+          <div style="height:80px; display:flex; align-items:flex-end; background:rgba(0,0,0,0.25); padding:6px; border-radius:6px; margin-bottom:8px;">
+            <div style="width:100%; height:${hPct}%; background:${st.css}; border-radius:4px;"></div>
+          </div>
+          <div style="font-size:0.74rem; color:#cbd5e1;">
+            Presupuesto: ${fmtNum(f.hh_presupuesto, 0)} HH<br/>
+            PF Acum (S056): <strong>${fmtPF(pfAcum)}</strong>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    /*************************************************************************
+     * 8. GRÁFICO DE TENDENCIA DEL CONTRATO (AGRUPACIÓN SEMANA / MES / AÑO)
+     *************************************************************************/
+    function renderTrendBars() {
+      const box = document.getElementById("trend-bars-box");
+      let buckets = [];
+
+      if (STATE.trendGrouping === "SEMANA") {
+        buckets = DATA.contrato_semanal.map((s, idx) => ({
+          label: s.semana,
+          tooltip: `${s.semana} (${s.fecha_corte})`,
+          gast: s.hh_gastadas,
+          gan: s.hh_ganadas,
+          pf: calcPF(s.hh_gastadas, s.hh_ganadas),
+          weekIdx: idx,
+          isSelected: idx === STATE.activeWeekIdx
+        }));
+      } else if (STATE.trendGrouping === "MES") {
+        const monthMap = new Map();
+        const monthNames = {
+          "2026-02": "Feb 26", "2026-03": "Mar 26", "2026-04": "Abr 26",
+          "2026-05": "May 26", "2026-06": "Jun 26", "2026-07": "Jul 26",
+          "2026-08": "Ago 26", "2026-09": "Sep 26", "2026-10": "Oct 26"
+        };
+        DATA.contrato_semanal.forEach((s, idx) => {
+          const ym = s.fecha_corte.slice(0, 7);
+          if (!monthMap.has(ym)) {
+            monthMap.set(ym, { label: monthNames[ym] || ym, gast: 0, gan: 0, lastIdx: idx, containsActive: false });
+          }
+          const m = monthMap.get(ym);
+          m.gast += s.hh_gastadas;
+          m.gan += s.hh_ganadas;
+          m.lastIdx = idx;
+          if (idx === STATE.activeWeekIdx) m.containsActive = true;
+        });
+        buckets = Array.from(monthMap.values()).map(m => ({
+          label: m.label,
+          tooltip: `Mes ${m.label}`,
+          gast: m.gast,
+          gan: m.gan,
+          pf: calcPF(m.gast, m.gan),
+          weekIdx: m.lastIdx,
+          isSelected: m.containsActive
+        }));
+      } else {
+        // Agrupación AÑO (2026)
+        const totGast = DATA.contrato_semanal.reduce((a, b) => a + b.hh_gastadas, 0);
+        const totGan = DATA.contrato_semanal.reduce((a, b) => a + b.hh_ganadas, 0);
+        buckets = [{
+          label: "Año 2026 (S021–S056)",
+          tooltip: "Acumulado Curva 2026",
+          gast: totGast,
+          gan: totGan,
+          pf: calcPF(totGast, totGan),
+          weekIdx: DATA.contrato_semanal.length - 1,
+          isSelected: true
+        }];
+      }
+
+      const maxPF = 1.65;
+      const targetBottomPct = Math.round((1.0 / maxPF) * 100);
+
+      let html = `
+        <div class="target-line" style="bottom:${targetBottomPct}%;">
+          <span>Meta PF = 1.00</span>
+        </div>
+      `;
+
+      buckets.forEach((b, i) => {
+        const st = getPFStatus(b.pf);
+        const hPct = Math.min(100, Math.max(10, Math.round(((b.pf || 0) / maxPF) * 100)));
+        const showLabel = STATE.trendGrouping !== "SEMANA" || (i % 2 === 0 || i === buckets.length - 1 || b.isSelected);
+        html += `
+          <div class="bar-col ${b.isSelected ? "selected-bar" : ""}"
+               onclick="onWeekSliderChange(${b.weekIdx})"
+               title="${b.tooltip} | PF: ${fmtPF(b.pf)} | Gastadas: ${fmtNum(b.gast, 1)} HH | Ganadas: ${fmtNum(b.gan, 1)} HH">
+            <div class="bar-fill" style="height:${hPct}%; background:${st.css};"></div>
+            ${showLabel ? `<span class="bar-lbl">${b.label}</span>` : ""}
+          </div>
+        `;
+      });
+
+      box.innerHTML = html;
+    }
+
+    /*************************************************************************
+     * 9. POBLADO DE TABLAS EJECUTIVAS (FRENTES Y COMMODITIES)
+     *************************************************************************/
+    function populateDataTables() {
+      const tbodyF = document.getElementById("tbody-frentes");
+      const tfootF = document.getElementById("tfoot-frentes");
+      tbodyF.innerHTML = "";
+
+      let sumPartidas = 0, sumPres = 0, sumFore = 0, sumGastSem = 0, sumGanSem = 0, sumGastAcum = 0, sumGanAcum = 0, sumSinAvance = 0;
+
+      DATA.frentes.forEach((f, idx) => {
+        sumPartidas += f.partidas;
+        sumPres += f.hh_presupuesto;
+        sumFore += f.hh_forecast;
+        sumGastSem += f.hh_gastadas_sem;
+        sumGanSem += f.hh_ganadas_sem;
+        sumGastAcum += f.hh_gastadas_acum;
+        sumGanAcum += f.hh_ganadas_acum;
+        sumSinAvance += f.partidas_sin_avance;
+
+        const pfSem = calcPF(f.hh_gastadas_sem, f.hh_ganadas_sem);
+        const pfAcum = calcPF(f.hh_gastadas_acum, f.hh_ganadas_acum);
+        const stSem = getPFStatus(pfSem);
+        const stAcum = getPFStatus(pfAcum);
+        const diffAcum = f.hh_gastadas_acum - f.hh_ganadas_acum;
+
+        const tr = document.createElement("tr");
+        tr.style.cursor = "pointer";
+        tr.onclick = () => {
+          selectFrente(idx);
+          switchTab("tab-3d", document.querySelector(".nav-tabs .tab-btn"));
+        };
+        tr.innerHTML = `
+          <td><strong>${f.nombre}</strong></td>
+          <td class="num">${f.partidas}</td>
+          <td class="num">${fmtNum(f.hh_presupuesto, 0)}</td>
+          <td class="num">${fmtNum(f.hh_forecast, 0)}</td>
+          <td class="num">${fmtNum(f.hh_gastadas_sem, 1)}</td>
+          <td class="num">${fmtNum(f.hh_ganadas_sem, 1)}</td>
+          <td class="num"><span class="pf-badge ${stSem.badgeClass}">${fmtPF(pfSem)}</span></td>
+          <td class="num">${fmtNum(f.hh_gastadas_acum, 1)}</td>
+          <td class="num">${fmtNum(f.hh_ganadas_acum, 1)}</td>
+          <td class="num"><span class="pf-badge ${stAcum.badgeClass}">${fmtPF(pfAcum)}</span></td>
+          <td class="num" style="font-weight:700; color:${diffAcum > 0 ? 'var(--pf-red)' : 'var(--pf-green)'}">
+            ${diffAcum > 0 ? "+" : ""}${fmtNum(diffAcum, 1)}
+          </td>
+          <td class="num">
+            ${f.partidas_sin_avance > 0
+              ? `<span class="pf-badge pf-red">⚠️ ${f.partidas_sin_avance} partidas</span>`
+              : `<span class="pf-badge pf-green">0</span>`}
+          </td>
+        `;
+        tbodyF.appendChild(tr);
+      });
+
+      const totPfSem = calcPF(sumGastSem, sumGanSem);
+      const totPfAcum = calcPF(sumGastAcum, sumGanAcum);
+      const totDiffAcum = sumGastAcum - sumGanAcum;
+
+      tfootF.innerHTML = `
+        <tr>
+          <td>TOTAL CONTRATO (ISP S056)</td>
+          <td class="num">${sumPartidas}</td>
+          <td class="num">${fmtNum(sumPres, 0)}</td>
+          <td class="num">${fmtNum(sumFore, 0)}</td>
+          <td class="num">${fmtNum(sumGastSem, 1)}</td>
+          <td class="num">${fmtNum(sumGanSem, 2)}</td>
+          <td class="num"><span class="pf-badge ${getPFStatus(totPfSem).badgeClass}">${fmtPF(totPfSem)}</span></td>
+          <td class="num">${fmtNum(sumGastAcum, 0)}</td>
+          <td class="num">${fmtNum(sumGanAcum, 2)}</td>
+          <td class="num"><span class="pf-badge ${getPFStatus(totPfAcum).badgeClass}">${fmtPF(totPfAcum)}</span></td>
+          <td class="num">${totDiffAcum > 0 ? "+" : ""}${fmtNum(totDiffAcum, 2)}</td>
+          <td class="num">${sumSinAvance} partidas</td>
+        </tr>
+      `;
+
+      // Tabla de Especialidades (Commodities)
+      const tbodyC = document.getElementById("tbody-commodities");
+      tbodyC.innerHTML = "";
+      DATA.commodities.forEach((c) => {
+        const pfSem = calcPF(c.hh_gastadas_sem, c.hh_ganadas_sem);
+        const pfAcum = calcPF(c.hh_gastadas_acum, c.hh_ganadas_acum);
+        const stSem = getPFStatus(pfSem);
+        const stAcum = getPFStatus(pfAcum);
+        const diffAcum = c.hh_gastadas_acum - c.hh_ganadas_acum;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><strong>${c.nombre}</strong></td>
+          <td class="num">${c.partidas}</td>
+          <td class="num">${fmtNum(c.hh_presupuesto, 0)}</td>
+          <td class="num">${fmtNum(c.hh_forecast, 0)}</td>
+          <td class="num">${fmtNum(c.hh_gastadas_sem, 1)}</td>
+          <td class="num">${fmtNum(c.hh_ganadas_sem, 1)}</td>
+          <td class="num"><span class="pf-badge ${stSem.badgeClass}">${fmtPF(pfSem)}</span></td>
+          <td class="num">${fmtNum(c.hh_gastadas_acum, 1)}</td>
+          <td class="num">${fmtNum(c.hh_ganadas_acum, 1)}</td>
+          <td class="num"><span class="pf-badge ${stAcum.badgeClass}">${fmtPF(pfAcum)}</span></td>
+          <td class="num" style="font-weight:700; color:${diffAcum > 0 ? 'var(--pf-red)' : (diffAcum < 0 ? 'var(--pf-green)' : 'inherit')}">
+            ${diffAcum > 0 ? "+" : ""}${fmtNum(diffAcum, 1)}
+          </td>
+          <td class="num">
+            ${c.partidas_sin_avance > 0
+              ? `<span class="pf-badge pf-red">⚠️ ${c.partidas_sin_avance}</span>`
+              : `<span style="color:var(--text-muted)">0</span>`}
+          </td>
+        `;
+        tbodyC.appendChild(tr);
+      });
+    }
+
+    /*************************************************************************
+     * 10. CONTROLADORES DE INTERACCIÓN DEL USUARIO
+     *************************************************************************/
+    function selectFrente(idx) {
+      STATE.selectedFrenteIdx = idx;
+      updateAllViews();
+    }
+
+    function onWeekSliderChange(val) {
+      STATE.activeWeekIdx = Number(val);
+      updateAllViews();
+    }
+
+    function setBlockColorMode(mode) {
+      STATE.blockColorMode = mode;
+      document.getElementById("btn-mode-sem").classList.toggle("active", mode === "SEMANA");
+      document.getElementById("btn-mode-acum").classList.toggle("active", mode === "ACUMULADO");
+      updateAllViews();
+    }
+
+    function setTrendGrouping(group) {
+      STATE.trendGrouping = group;
+      document.getElementById("grp-sem").classList.toggle("active", group === "SEMANA");
+      document.getElementById("grp-mes").classList.toggle("active", group === "MES");
+      document.getElementById("grp-anio").classList.toggle("active", group === "ANIO");
+      renderTrendBars();
+    }
+
+    function togglePlayTimeline() {
+      STATE.isPlaying = !STATE.isPlaying;
+      const icon = document.getElementById("play-icon");
+      const txt = document.getElementById("play-text");
+
+      if (STATE.isPlaying) {
+        icon.textContent = "⏸";
+        txt.textContent = "Pausar";
+        if (STATE.activeWeekIdx >= DATA.contrato_semanal.length - 1) {
+          STATE.activeWeekIdx = 0;
+        }
+        STATE.playTimer = setInterval(() => {
+          if (STATE.activeWeekIdx < DATA.contrato_semanal.length - 1) {
+            STATE.activeWeekIdx++;
+            updateAllViews();
+          } else {
+            togglePlayTimeline(); // Detener al llegar a S056
+          }
+        }, 550);
+      } else {
+        icon.textContent = "▶";
+        txt.textContent = "Reproducir Historia";
+        clearInterval(STATE.playTimer);
+      }
+    }
+
+    function switchTab(tabId, btnEl) {
+      document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+      document.getElementById(tabId).classList.add("active");
+      document.querySelectorAll(".nav-tabs .tab-btn").forEach(b => b.classList.remove("active"));
+      if (btnEl) btnEl.classList.add("active");
+      if (tabId === "tab-3d") {
+        setTimeout(onWindowResize, 50);
+      }
+    }
+
+    function setContractArea(area) {
+      STATE.contractArea = area;
+      document.getElementById("btn-area-humeda").classList.toggle("active", area === "HUMEDA");
+      document.getElementById("btn-area-seca").classList.toggle("active", area === "SECA");
+
+      if (area === "SECA") {
+        if (camera && controls) {
+          camera.position.set(-8, 22, -18);
+          controls.target.set(-5, 0, -5);
+        }
+        document.getElementById("json-note-2").textContent = "Área Seca: la escena 3D ya tiene reservado el cuadrante norte para sus volúmenes; se activa al cargar su archivo de control.";
+        setContractArea("HUMEDA");
+      } else {
+        resetCameraView();
+      }
+    }
+
+    /*************************************************************************
+     * 11. INICIALIZACIÓN AL CARGAR EL DOCUMENTO
+     *************************************************************************/
+    window.addEventListener("DOMContentLoaded", () => {
+      // Mostrar notas del JSON en el banner
+      document.getElementById("json-note-1").textContent = DATA.notas[0];
+      document.getElementById("json-note-2").textContent = DATA.notas[1];
+
+      // Poblar selector desplegable de semanas
+      const dropdown = document.getElementById("week-dropdown");
+      DATA.contrato_semanal.forEach((s, idx) => {
+        const opt = document.createElement("option");
+        opt.value = idx;
+        opt.textContent = `${s.semana} (${s.fecha_corte})`;
+        dropdown.appendChild(opt);
+      });
+      dropdown.value = STATE.activeWeekIdx;
+
+      // Poblar tablas de Frentes y Especialidades
+      populateDataTables();
+
+      // Ejecutar chequeo de cuadratura en consola
+      runConsoleAcceptanceCheck();
+
+      // Iniciar escena Three.js
+      initThreeJS();
+
+      // Renderizar estado inicial (S056)
+      updateAllViews();
+    });
+  </script>
+</body>
+</html>
